@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: ai-tutor-backend
+    env: docker
+    dockerContext: backend
+    dockerfilePath: backend/Dockerfile
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ai-tutor-db
+          property: connectionString
+      - key: ENV
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: GROQ_API_KEY
+        sync: false
+      - key: XAI_API_KEY
+        sync: false
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: ai-tutor-db
+          property: password
+    plan: free
+
+  - type: static
+    name: ai-tutor-frontend
+    env: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishDir: frontend/dist
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: ai-tutor-backend
+          property: host
+    plan: free
+
+databases:
+  - name: ai-tutor-db
+    plan: free

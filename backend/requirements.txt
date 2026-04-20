@@ -1,0 +1,60 @@
+# AI Tutor Platform - Backend Requirements
+# Core FastAPI and Web Framework
+fastapi
+uvicorn[standard]
+python-multipart
+
+# Database and ORM
+SQLAlchemy
+alembic
+psycopg2-binary  # PostgreSQL driver for migrations
+
+# Authentication and Security
+PyJWT
+bcrypt
+python-dotenv
+
+openai
+
+# Data Processing and Utilities
+pydantic
+pydantic_core
+requests
+python-dateutil
+
+# Optimized RAG (TF-IDF semantic search)
+scikit-learn
+scipy
+joblib
+threadpoolctl
+
+# HTTP and Networking
+httplib2
+uritemplate
+certifi
+charset-normalizer
+urllib3
+
+# Core Python Dependencies
+typing_extensions
+annotated-types
+anyio
+sniffio
+h11
+idna
+click
+starlette
+
+# Authentication Dependencies
+pyasn1
+pyasn1_modules
+rsa
+cachetools
+
+# Google API Dependencies
+grpcio
+grpcio-status
+
+# Development and Testing
+setuptools
+gunicorn
