@@ -15,7 +15,7 @@ const ChatHistory = memo(({ messages, onEditMessage }) => {
         <div className="flex items-center justify-center h-full">
           <div className="text-center text-gray-400">
             <div className="text-6xl mb-4">🤖</div>
-            <h3 className="text-xl font-semibold mb-2">Welcome to AI Tutor!</h3>
+            <h3 className="text-xl font-semibold mb-2">Welcome to Code Mentor!</h3>
             <p className="text-sm">Start a conversation to begin learning</p>
             <div className="mt-6 text-xs text-gray-500">
               <p className="mb-2">💡 Tips:</p>
