@@ -1,13 +1,71 @@
-# AI Tutor Platform - Backend API
+# Backend - Code Mentor AI
 
-Professional FastAPI backend for AI-powered tutoring platform with Grok AI integration.
+Production-grade FastAPI backend for Code Mentor AI.
 
-## 📋 Features
+## Structure
 
-- **User Authentication**: JWT-based authentication with bcrypt password hashing
-- **AI Integration**: Grok AI (X.AI) for code analysis and tutoring
-- **Quiz System**: AI-generated questions with automatic grading
-- **CORS Support**: Ready for multi-frontend deployment
+```
+backend/
+├── config/          # Configuration management
+├── models/          # SQLAlchemy database models  
+├── routers/         # API endpoint handlers
+├── services/        # Business logic
+├── middleware/      # Custom middleware
+├── utils/           # Helper functions
+├── tests/           # Unit tests
+└── main.py          # Application entry
+```
+
+## Key Files
+
+- `main.py` - FastAPI application initialization
+- `config/settings.py` - Environment configuration
+- `requirements.txt` - Python dependencies
+- `Dockerfile` - Container configuration
+
+## Running
+
+### Local Development
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate  # or .\.venv\Scripts\activate on Windows
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+```
+
+### Docker
+
+```bash
+docker build -t code-mentor-backend .
+docker run -p 8000:8000 code-mentor-backend
+```
+
+## API Documentation
+
+Once running, visit `http://localhost:8000/docs` for interactive API docs.
+
+## Testing
+
+```bash
+pytest                          # Run all tests
+pytest --cov                   # With coverage
+pytest -v                      # Verbose output
+pytest backend/tests/test_auth.py::test_login  # Single test
+```
+
+## Configuration
+
+See `.env.example` for all available environment variables.
+
+Key variables:
+- `DATABASE_URL` - PostgreSQL connection string
+- `GROQ_API_KEY` - AI service API key
+- `JWT_SECRET_KEY` - Secret for token signing
+- `ENVIRONMENT` - dev/staging/production
+
+See [Main README](../README.md) for more info.
 - **Professional Logging**: Structured logging with rotation
 - **Database**: PostgreSQL with SQLAlchemy ORM
 - **API Documentation**: Auto-generated Swagger & ReDoc docs
