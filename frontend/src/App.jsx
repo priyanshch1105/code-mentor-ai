@@ -329,7 +329,7 @@ function App() {
               >
                 <Menu size={24} />
               </button>
-              <h1 className="text-lg font-bold text-white">AI Tutor</h1>
+              <h1 className="text-lg font-bold text-white">Code Mentor AI</h1>
               <div className="w-6" /> {/* Spacer for centering */}
             </div>
 
@@ -361,7 +361,7 @@ function App() {
                   <header className="hidden lg:block px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white relative shadow-sm">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h1 className="text-base font-semibold mb-1">AI Tutor Chat</h1>
+                        <h1 className="text-base font-semibold mb-1">Code Mentor Chat</h1>
                         <div className="flex items-center space-x-2 text-xs">
                           <span className="bg-white/20 px-2 py-0.5 rounded-full">{sessionName}</span>
                           <span className="bg-white/20 px-2 py-0.5 rounded-full">{currentSubject || 'No Subject'}</span>
