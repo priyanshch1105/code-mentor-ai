@@ -1,35 +1,45 @@
-# Code Tutor
+# Code Mentor AI
 
-AI-powered tutoring platform with a FastAPI backend and React frontend.
+Production-grade AI-powered learning platform with intelligent code mentoring, quiz systems, and personalized recommendations.
 
-## What This Repo Contains
+![Status](https://img.shields.io/badge/status-production-green)
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-- `backend/`: FastAPI API, SQLAlchemy models, AI service integration, and business logic
-- `frontend/`: React + Vite single-page application
-- `scripts/`: data/migration/testing utilities
+## 📋 Quick Links
 
-## Core Features
+- 📚 [Architecture](./ARCHITECTURE.md) - System design & folder structure
+- 🚀 [Setup Guide](./docs/SETUP.md) - Development environment
+- 📖 [API Documentation](./docs/API.md) - API endpoints & examples
+- 🤝 [Contributing](./docs/CONTRIBUTING.md) - Development guidelines
 
-- Subject-aware tutoring chat
-- Code debugging assistant
-- Quiz generation and quiz history
-- Learning recommendations
-- Session/message history
-- Progress dashboard
+## 🎯 Core Features
 
-## Tech Stack
+- **Intelligent Tutoring Chat** - Subject-aware AI assistant
+- **Code Debugging** - Real-time code analysis & fixes
+- **Quiz System** - Adaptive question generation
+- **Progress Dashboard** - Learning analytics
+- **Learning Recommendations** - AI-powered next steps
+- **Session Management** - Chat history & persistence
 
-- Backend: FastAPI, SQLAlchemy, PostgreSQL, JWT auth
-- Frontend: React, Vite, Axios, Recharts, Monaco editor
-- AI integration: Groq-compatible API client (configured via `GROQ_API_KEY`)
+## 🛠 Tech Stack
 
-## Prerequisites
+| Component | Technology |
+|-----------|-----------|
+| **Backend** | FastAPI, SQLAlchemy, PostgreSQL, JWT |
+| **Frontend** | React 18, Vite, Tailwind CSS, Recharts |
+| **AI** | Groq API, LLM Integration |
+| **DevOps** | Docker, Docker Compose, GitHub Actions |
+| **Testing** | Pytest, Vitest, Coverage |
 
-- Python 3.10+
+## 📦 Prerequisites
+
+- Python 3.10+ 
 - Node.js 18+
 - PostgreSQL 13+
+- Docker & Docker Compose (optional)
 
-## Quick Start (Local)
+## 🚀 Quick Start
 
 ### 1) Clone and enter project
 
