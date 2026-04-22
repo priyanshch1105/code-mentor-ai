@@ -61,8 +61,8 @@ const Login = ({ setIsLoggedIn, clearLocalStorage }) => {
           <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-2xl">
             <Sparkles size={32} className="text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">AI Tutor</h1>
-          <p className="text-gray-300">Your intelligent learning companion</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Code Mentor AI</h1>
+          <p className="text-gray-300">Your intelligent coding companion</p>
         </div>
 
         {/* Form Card */}
@@ -144,7 +144,7 @@ const Login = ({ setIsLoggedIn, clearLocalStorage }) => {
 
         {/* Features */}
         <div className="mt-8 text-center text-gray-300">
-          <p className="text-sm">✨ AI-powered tutoring • 📚 Multiple subjects • 🔧 Code debugging</p>
+          <p className="text-sm">✨ AI-powered learning • 📚 Multiple subjects • 🔧 Code debugging</p>
         </div>
       </div>
     </div>
