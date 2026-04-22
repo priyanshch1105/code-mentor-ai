@@ -39,9 +39,9 @@ const Sidebar = ({ setCurrentView, setShowSubjectModal, setIsLoggedIn, setShowPr
       {/* Logo/Brand */}
       <div className="text-center px-4">
         <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mb-2 mx-auto">
-          <span className="text-white font-bold text-lg">AI</span>
+          <span className="text-white font-bold text-lg">CM</span>
         </div>
-        <p className="text-xs text-gray-400 font-medium">Tutor</p>
+        <p className="text-xs text-gray-400 font-medium">Code Mentor</p>
       </div>
 
       {/* Recommendations Widget */}
