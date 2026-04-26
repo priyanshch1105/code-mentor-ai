@@ -80,7 +80,8 @@ setup_backend() {
     
     # Install dependencies
     print_info "Installing Python dependencies..."
-    pip install -r requirements.txt
+    python -m pip install --upgrade pip
+    python -m pip install -r requirements.txt
     
     # Create .env file if it doesn't exist
     if [ ! -f ".env" ]; then
