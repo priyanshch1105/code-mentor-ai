@@ -5,7 +5,7 @@ import json
 import random
 import time
 from typing import Dict, List, Tuple
-from config import settings
+from config.settings import settings
 from logger import get_logger
 
 logger = get_logger(__name__)
