@@ -5,7 +5,7 @@ import { jwtDecode } from 'jwt-decode';
 import api from './services/api';
 import ToastProvider from './components/ToastProvider';
 import Login from './components/Login';
-import Sidebar from './components/Sidebar';
+import Navbar from './components/Navbar';
 import ChatHistory from './components/ChatHistory';
 import MessageBar from './components/MessageBar';
 import ProgressDashboard from './components/ProgressDashboard';
@@ -15,8 +15,10 @@ import HistoryPanel from './components/HistoryPanel';
 import QuizSystem from './components/QuizSystem';
 import QuizHistory from './components/QuizHistory';
 import QuizAnalytics from './components/QuizAnalytics';
+import ProfileScreen from './components/ProfileScreen';
 import { toast } from 'react-toastify';
-import { Menu, X } from 'lucide-react';
+import { PenSquare, Search, MessageCircle, UserPlus, MoreHorizontal, Moon, Sun, LogOut } from 'lucide-react';
+import { useTheme } from './shared/theme/ThemeProvider';
 
 // Protected Route Component for logged-in users
 const ProtectedRoute = ({ children, isLoggedIn }) => {
@@ -27,6 +29,7 @@ const ProtectedRoute = ({ children, isLoggedIn }) => {
 };
 
 function App() {
+  const { theme, toggleTheme } = useTheme();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState([]);
@@ -34,6 +37,7 @@ function App() {
   const [showSubjectModal, setShowSubjectModal] = useState(false);
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [showHistoryPanel, setShowHistoryPanel] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
   const [currentView, setCurrentView] = useState('chat');
   const [currentSessionId, setCurrentSessionId] = useState(null);
   const [sessionName, setSessionName] = useState('New Chat');
@@ -41,7 +45,6 @@ function App() {
   const [currentSubject, setCurrentSubject] = useState('general'); // Chat ka subject
   const [userPreferredSubject, setUserPreferredSubject] = useState('general'); // User ka default subject (for recommendations)
   const [page, setPage] = useState(1);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [subjectModalContext, setSubjectModalContext] = useState('chat'); // 'chat' or 'recommendation'
   const chatContainerRef = useRef(null);
@@ -57,6 +60,7 @@ function App() {
             api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
             const userRes = await api.get('/api/auth/me');
             const userSubject = userRes.data.current_subject || 'general';
+            setUserProfile(userRes.data);
             setUserPreferredSubject(userSubject); // User ka preferred subject
             setCurrentSubject(userSubject); // Initial chat subject bhi same
             
@@ -91,6 +95,24 @@ function App() {
     };
     checkAuth();
   }, []);
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!isLoggedIn || userProfile) return;
+
+      try {
+        const userRes = await api.get('/api/auth/me');
+        setUserProfile(userRes.data);
+        if (userRes.data.current_subject) {
+          setUserPreferredSubject(userRes.data.current_subject);
+        }
+      } catch {
+        // No-op: auth interceptor handles invalid session
+      }
+    };
+
+    fetchUserProfile();
+  }, [isLoggedIn, userProfile]);
 
   useEffect(() => {
     // Only load messages for pagination, not on initial session load
@@ -232,8 +254,21 @@ function App() {
     setCurrentSessionId(null);
     setCurrentSubject('general');
     setSessionName('New Chat');
+    setUserProfile(null);
     setPage(1);
     setIsInitialLoad(true);
+  };
+
+  const refreshUserProfile = async () => {
+    try {
+      const userRes = await api.get('/api/auth/me');
+      setUserProfile(userRes.data);
+      const userSubject = userRes.data.current_subject || 'general';
+      setUserPreferredSubject(userSubject);
+      toast.success('Profile refreshed.');
+    } catch (err) {
+      toast.error('Could not refresh profile: ' + (err.response?.data?.detail || err.message));
+    }
   };
 
   const startNewChat = async () => {
@@ -265,6 +300,13 @@ function App() {
     // Don't affect current chat subject
   };
 
+  const handleLogout = () => {
+    Cookies.remove('token');
+    setIsLoggedIn(false);
+    clearLocalStorage();
+    toast.info('Logged out successfully!');
+  };
+
   const handleEditMessage = useCallback(async (index, newContent) => {
     // Truncate messages after the edited message (remove old response)
     setMessages(prev => prev.slice(0, index));
@@ -274,10 +316,24 @@ function App() {
     await sendMessage(newContent);
   }, [sendMessage]);
 
+  const quickPrompts = [
+    'Debug my Python code and explain simply',
+    'Create a short quiz from this topic',
+    'Write clean version of this function',
+  ];
+
+  const handleQuickPrompt = (prompt) => {
+    setInput(prompt);
+  };
+
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-900 text-white">
-        <p className="text-xl">Loading... Checking session</p>
+      <div className="h-screen theme-bg theme-text flex items-center justify-center p-4">
+        <div className="theme-surface theme-border border rounded-2xl px-8 py-10 shadow-sm text-center max-w-md w-full">
+          <div className="w-12 h-12 mx-auto mb-4 rounded-full border-4 border-blue-200 border-t-blue-500 animate-spin"></div>
+          <p className="text-lg font-semibold">Preparing your workspace</p>
+          <p className="text-sm theme-muted mt-2">Checking your session and loading chat context.</p>
+        </div>
       </div>
     );
   }
@@ -291,50 +347,23 @@ function App() {
           </ProtectedRoute>
         } />
         <Route path="/" element={isLoggedIn ? (
-          <div className="h-screen bg-gray-900 text-white flex relative">
-            {sidebarOpen && (
-              <div 
-                className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-                onClick={() => setSidebarOpen(false)}
+          <div className="h-screen theme-bg theme-text flex flex-col transition-colors duration-200">
+            {currentView !== 'chat' && (
+              <Navbar
+                setCurrentView={setCurrentView}
+                setShowSubjectModal={setShowSubjectModal}
+                setIsLoggedIn={setIsLoggedIn}
+                setShowProgressModal={setShowProgressModal}
+                setShowHistoryPanel={setShowHistoryPanel}
+                startNewChat={startNewChat}
+                currentView={currentView}
+                userProfile={userProfile}
+                setSubjectModalContext={setSubjectModalContext}
               />
             )}
-            
-            {/* Sidebar */}
-            <div className={`
-              fixed lg:static inset-y-0 left-0 z-50 lg:z-auto
-              transform transition-transform duration-300 ease-in-out
-              ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-              lg:translate-x-0
-            `}>
-            <Sidebar 
-              setCurrentView={setCurrentView}
-              setShowSubjectModal={setShowSubjectModal}
-              setIsLoggedIn={setIsLoggedIn}
-              setShowProgressModal={setShowProgressModal}
-              setShowHistoryPanel={setShowHistoryPanel}
-              startNewChat={startNewChat}
-              currentView={currentView}
-              setSidebarOpen={setSidebarOpen}
-              currentSubject={currentSubject}
-              userPreferredSubject={userPreferredSubject}
-              setSubjectModalContext={setSubjectModalContext}
-            />
-            </div>
-
-            {/* Mobile Header */}
-            <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-gray-800 p-4 flex items-center justify-between border-b border-gray-700">
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="text-white hover:text-gray-300 transition-colors"
-              >
-                <Menu size={24} />
-              </button>
-              <h1 className="text-lg font-bold text-white">Code Mentor AI</h1>
-              <div className="w-6" /> {/* Spacer for centering */}
-            </div>
 
             {/* Main Content */}
-            <div className="flex-1 flex flex-col lg:ml-0 pt-16 lg:pt-0">
+            <div className={`flex-1 flex min-h-0 ${currentView === 'chat' ? '' : 'flex-col px-3 lg:px-6 pb-3 lg:pb-6'}`}>
               {showHistoryPanel && (
                 <HistoryPanel 
                   setCurrentSessionId={setCurrentSessionId} 
@@ -356,61 +385,175 @@ function App() {
               )}
               
               {currentView === 'chat' && (
-                <>
-                  {/* Desktop Header */}
-                  <header className="hidden lg:block px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white relative shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h1 className="text-base font-semibold mb-1">Code Mentor Chat</h1>
-                        <div className="flex items-center space-x-2 text-xs">
-                          <span className="bg-white/20 px-2 py-0.5 rounded-full">{sessionName}</span>
-                          <span className="bg-white/20 px-2 py-0.5 rounded-full">{currentSubject || 'No Subject'}</span>
-                        </div>
+                <div className="w-full h-full flex min-h-0">
+                  <aside className="hidden md:flex w-16 border-r theme-border theme-surface flex-col items-center py-3 gap-2">
+                    <button onClick={startNewChat} className="w-10 h-10 rounded-xl theme-surface-soft theme-border border flex items-center justify-center hover:opacity-80" title="New chat">
+                      <PenSquare size={18} />
+                    </button>
+                    <button onClick={() => setShowHistoryPanel(true)} className="w-10 h-10 rounded-xl theme-surface-soft theme-border border flex items-center justify-center hover:opacity-80" title="Search history">
+                      <Search size={18} />
+                    </button>
+                    <button onClick={() => setShowHistoryPanel(true)} className="w-10 h-10 rounded-xl theme-surface-soft theme-border border flex items-center justify-center hover:opacity-80" title="Messages">
+                      <MessageCircle size={18} />
+                    </button>
+                    <div className="mt-auto mb-1 w-9 h-9 rounded-full theme-surface-soft theme-border border flex items-center justify-center text-xs font-semibold">
+                      {(userProfile?.username || 'U').charAt(0).toUpperCase()}
+                    </div>
+                  </aside>
+
+                  <div className="flex-1 min-h-0 flex flex-col">
+                    <div className="h-14 border-b theme-border flex items-center justify-between px-4 lg:px-6 theme-surface">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg font-semibold">Code Mentor</span>
                       </div>
-                      <div className="flex items-center space-x-1.5">
-                        <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
-                        <span className="text-xs">Online</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={toggleTheme}
+                          className="w-9 h-9 rounded-full theme-surface-soft theme-border border flex items-center justify-center hover:opacity-85"
+                          title="Toggle theme"
+                        >
+                          {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+                        </button>
+                        <button
+                          onClick={handleLogout}
+                          className="w-9 h-9 rounded-full theme-surface-soft theme-border border flex items-center justify-center hover:opacity-85 text-rose-500"
+                          title="Logout"
+                        >
+                          <LogOut size={16} />
+                        </button>
+                        <button className="w-9 h-9 rounded-full theme-surface-soft theme-border border flex items-center justify-center hover:opacity-85" title="Invite">
+                          <UserPlus size={16} />
+                        </button>
+                        <button className="w-9 h-9 rounded-full theme-surface-soft theme-border border flex items-center justify-center hover:opacity-85" title="More">
+                          <MoreHorizontal size={16} />
+                        </button>
                       </div>
                     </div>
-                  </header>
 
-                  {/* Mobile Chat Header */}
-                  <div className="lg:hidden bg-gray-800 px-4 py-2 border-b border-gray-700">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h2 className="text-sm font-semibold text-white">{sessionName}</h2>
-                        <p className="text-xs text-gray-400 mt-0.5">{currentSubject || 'No Subject'}</p>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
-                        <span className="text-xs text-gray-400">Online</span>
+                    <div className="h-12 border-b theme-border theme-surface overflow-x-auto custom-scroll">
+                      <div className="h-full min-w-max px-3 lg:px-4 flex items-center gap-2">
+                        <button
+                          onClick={startNewChat}
+                          className="px-3 py-1.5 rounded-full text-xs font-medium theme-surface-soft theme-border border hover:opacity-85"
+                        >
+                          New Chat
+                        </button>
+                        <button
+                          onClick={() => setCurrentView('chat')}
+                          className={`px-3 py-1.5 rounded-full text-xs font-medium ${currentView === 'chat' ? 'bg-blue-600 text-white' : 'theme-surface-soft theme-border border hover:opacity-85'}`}
+                        >
+                          Chat
+                        </button>
+                        <button
+                          onClick={() => setShowHistoryPanel(true)}
+                          className="px-3 py-1.5 rounded-full text-xs font-medium theme-surface-soft theme-border border hover:opacity-85"
+                        >
+                          Search Chat
+                        </button>
+                        <button
+                          onClick={() => { setSubjectModalContext('chat'); setShowSubjectModal(true); }}
+                          className="px-3 py-1.5 rounded-full text-xs font-medium theme-surface-soft theme-border border hover:opacity-85"
+                        >
+                          Subject
+                        </button>
+                        <button
+                          onClick={() => setCurrentView('quiz')}
+                          className="px-3 py-1.5 rounded-full text-xs font-medium theme-surface-soft theme-border border hover:opacity-85"
+                        >
+                          Quiz
+                        </button>
+                        <button
+                          onClick={() => setCurrentView('quiz-history')}
+                          className="px-3 py-1.5 rounded-full text-xs font-medium theme-surface-soft theme-border border hover:opacity-85"
+                        >
+                          Quiz History
+                        </button>
+                        <button
+                          onClick={() => setCurrentView('quiz-analytics')}
+                          className="px-3 py-1.5 rounded-full text-xs font-medium theme-surface-soft theme-border border hover:opacity-85"
+                        >
+                          Quiz Analytics
+                        </button>
+                        <button
+                          onClick={() => setCurrentView('code')}
+                          className="px-3 py-1.5 rounded-full text-xs font-medium theme-surface-soft theme-border border hover:opacity-85"
+                        >
+                          Code Debug
+                        </button>
+                        <button
+                          onClick={() => setCurrentView('profile')}
+                          className="px-3 py-1.5 rounded-full text-xs font-medium theme-surface-soft theme-border border hover:opacity-85"
+                        >
+                          Profile
+                        </button>
+                        <button
+                          onClick={() => setShowProgressModal(true)}
+                          className="px-3 py-1.5 rounded-full text-xs font-medium theme-surface-soft theme-border border hover:opacity-85"
+                        >
+                          Progress
+                        </button>
                       </div>
                     </div>
-                  </div>
 
-                  <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-900 custom-scroll" style={{ contain: 'layout style paint' }}>
-                    <ChatHistory 
-                      messages={messages} 
-                      onEditMessage={handleEditMessage}
-                    />
-                    {responseLoading && (
-                      <div className="flex items-center space-x-2 p-3 text-gray-300">
-                        <div className="flex items-start">
-                          <div className="min-w-[32px] h-8 rounded-full bg-gradient-to-r from-purple-500 to-purple-600 flex items-center justify-center shrink-0">
-                            <span className="text-white">🤖</span>
+                    <div ref={chatContainerRef} className="flex-1 overflow-y-auto custom-scroll" style={{ contain: 'layout style paint' }}>
+                      <div className="max-w-4xl mx-auto w-full px-4 py-8 space-y-6">
+                        {messages.length === 0 ? (
+                          <div className="min-h-[46vh] flex flex-col items-center justify-center">
+                            <h2 className="text-4xl font-medium tracking-tight text-center">What can I help with?</h2>
+                            <div className="w-full max-w-3xl mt-8">
+                              <MessageBar input={input} setInput={setInput} sendMessage={sendMessage} />
+                              <div className="mt-5 flex items-center justify-center gap-2 flex-wrap">
+                                {quickPrompts.map((prompt) => (
+                                  <button
+                                    key={prompt}
+                                    onClick={() => handleQuickPrompt(prompt)}
+                                    className="px-4 py-2 rounded-full theme-surface theme-border border text-sm hover:opacity-85"
+                                  >
+                                    {prompt}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
                           </div>
+                        ) : (
+                          <>
+                            <ChatHistory 
+                              messages={messages} 
+                              onEditMessage={handleEditMessage}
+                            />
+                            {responseLoading && (
+                              <div className="flex items-center space-x-3 px-2 py-1 theme-muted">
+                                <div className="min-w-[24px] h-6 rounded-md theme-surface-soft flex items-center justify-center shrink-0 text-xs">AI</div>
+                                <div className="text-sm">Thinking<span className="dots"></span></div>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {messages.length > 0 && (
+                      <div className="px-4 pb-4 lg:pb-6 border-t theme-border theme-surface">
+                        <div className="max-w-3xl mx-auto w-full pt-3">
+                          <MessageBar input={input} setInput={setInput} sendMessage={sendMessage} />
                         </div>
-                        <div className="text-sm"><span className="dots"></span></div>
                       </div>
                     )}
                   </div>
-                  <MessageBar input={input} setInput={setInput} sendMessage={sendMessage} />
-                </>
+                </div>
               )}
               {currentView === 'code' && <CodeDebug />}
               {currentView === 'quiz' && <QuizSystem setCurrentView={setCurrentView} />}
               {currentView === 'quiz-history' && <QuizHistory setCurrentView={setCurrentView} />}
               {currentView === 'quiz-analytics' && <QuizAnalytics setCurrentView={setCurrentView} />}
+              {currentView === 'profile' && (
+                <ProfileScreen
+                  userProfile={userProfile}
+                  userPreferredSubject={userPreferredSubject}
+                  currentSubject={currentSubject}
+                  onRefreshProfile={refreshUserProfile}
+                />
+              )}
             </div>
             
             {showSubjectModal && (
