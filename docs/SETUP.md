@@ -45,7 +45,8 @@ python -m venv .venv
 source .venv/bin/activate
 
 # Install dependencies
-pip install -r requirements.txt
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 
 # Set up environment
 cp ../.env.example .env
@@ -141,10 +142,21 @@ http://localhost:5173
 **Missing Dependencies:**
 ```bash
 # Backend
-pip install --upgrade -r requirements.txt
+python -m pip install --upgrade pip
+python -m pip install --upgrade -r requirements.txt
 
 # Frontend
 npm install --force
+```
+
+**Windows Launcher Error (`Fatal error in launcher`)**
+```powershell
+cd backend
+deactivate 2>$null
+Remove-Item -Recurse -Force .venv
+py -3 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
 ## IDE Setup
