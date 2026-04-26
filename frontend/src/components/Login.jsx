@@ -3,9 +3,11 @@ import api from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
 import { toast } from 'react-toastify';
-import { User, Mail, Lock, Eye, EyeOff, Sparkles } from 'lucide-react';
+import { User, Mail, Lock, Eye, EyeOff, Sparkles, Moon, Sun } from 'lucide-react';
+import { useTheme } from '../shared/theme/ThemeProvider';
 
 const Login = ({ setIsLoggedIn, clearLocalStorage }) => {
+  const { theme, toggleTheme } = useTheme();
   const [isRegister, setIsRegister] = useState(false);
   const [form, setForm] = useState({ username: '', email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
@@ -25,27 +27,25 @@ const Login = ({ setIsLoggedIn, clearLocalStorage }) => {
 
     setLoading(true);
     try {
-      let res;
       if (isRegister) {
-        res = await api.post('/api/auth/register', form);
-        toast.success('Registered successfully! Please login.');
-        setIsRegister(false);
-        setForm({ username: '', email: '', password: '' });
-      } else {
-        const formData = new URLSearchParams();
-        formData.append('username', form.username);
-        formData.append('password', form.password);
-        
-        res = await api.post('/api/auth/login', formData.toString(), {
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-        });
-        
-        Cookies.set('token', res.data.access_token, { expires: 7 });
-        clearLocalStorage();
-        setIsLoggedIn(true);
-        toast.success('Logged in successfully!');
-        navigate('/');
+        await api.post('/api/auth/register', form);
+        toast.success('Registered successfully! Logging you in...');
       }
+
+      const formData = new URLSearchParams();
+      formData.append('username', form.username);
+      formData.append('password', form.password);
+
+      const loginRes = await api.post('/api/auth/login', formData.toString(), {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      });
+
+      Cookies.set('token', loginRes.data.access_token, { expires: 7 });
+      api.defaults.headers.common.Authorization = `Bearer ${loginRes.data.access_token}`;
+      clearLocalStorage();
+      setIsLoggedIn(true);
+      toast.success('Logged in successfully!');
+      navigate('/', { replace: true });
     } catch (err) {
       toast.error('Error: ' + (err.response?.data?.detail || err.message));
     } finally {
@@ -54,7 +54,18 @@ const Login = ({ setIsLoggedIn, clearLocalStorage }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center p-4">
+    <div className={`min-h-screen flex items-center justify-center p-4 transition-colors duration-200 ${
+      theme === 'dark'
+        ? 'bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900'
+        : 'bg-gradient-to-br from-sky-100 via-indigo-100 to-emerald-100'
+    }`}>
+      <button
+        onClick={toggleTheme}
+        className="absolute top-4 right-4 p-2 rounded-lg theme-surface theme-text theme-border border shadow-sm"
+        aria-label="Toggle theme"
+      >
+        {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+      </button>
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -62,12 +73,14 @@ const Login = ({ setIsLoggedIn, clearLocalStorage }) => {
             <Sparkles size={32} className="text-white" />
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">Code Mentor AI</h1>
-          <p className="text-gray-300">Your intelligent coding companion</p>
+          <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-slate-600'}`}>Your intelligent coding companion</p>
         </div>
 
         {/* Form Card */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20">
-          <h2 className="text-2xl font-bold text-white mb-6 text-center">
+        <div className={`backdrop-blur-lg rounded-2xl shadow-2xl p-8 border ${
+          theme === 'dark' ? 'bg-white/10 border-white/20' : 'bg-white/80 border-slate-200'
+        }`}>
+          <h2 className={`text-2xl font-bold mb-6 text-center ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
             {isRegister ? 'Create Account' : 'Welcome Back'}
           </h2>
 
@@ -79,7 +92,11 @@ const Login = ({ setIsLoggedIn, clearLocalStorage }) => {
                 placeholder="Username" 
                 value={form.username} 
                 onChange={e => setForm({...form, username: e.target.value})} 
-                className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent backdrop-blur-sm" 
+                className={`w-full pl-10 pr-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent backdrop-blur-sm ${
+                  theme === 'dark'
+                    ? 'bg-white/10 border border-white/20 text-white placeholder-gray-400'
+                    : 'bg-white border border-slate-300 text-slate-900 placeholder-slate-500'
+                }`} 
               />
             </div>
 
@@ -92,7 +109,11 @@ const Login = ({ setIsLoggedIn, clearLocalStorage }) => {
                   type="email"
                   value={form.email} 
                   onChange={e => setForm({...form, email: e.target.value})} 
-                  className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent backdrop-blur-sm" 
+                  className={`w-full pl-10 pr-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent backdrop-blur-sm ${
+                    theme === 'dark'
+                      ? 'bg-white/10 border border-white/20 text-white placeholder-gray-400'
+                      : 'bg-white border border-slate-300 text-slate-900 placeholder-slate-500'
+                  }`} 
                 />
               </div>
             )}
@@ -105,12 +126,16 @@ const Login = ({ setIsLoggedIn, clearLocalStorage }) => {
                 placeholder="Password" 
                 value={form.password} 
                 onChange={e => setForm({...form, password: e.target.value})} 
-                className="w-full pl-10 pr-12 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent backdrop-blur-sm" 
+                className={`w-full pl-10 pr-12 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent backdrop-blur-sm ${
+                  theme === 'dark'
+                    ? 'bg-white/10 border border-white/20 text-white placeholder-gray-400'
+                    : 'bg-white border border-slate-300 text-slate-900 placeholder-slate-500'
+                }`} 
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                className={`absolute right-3 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-gray-400 hover:text-gray-300' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
@@ -136,14 +161,14 @@ const Login = ({ setIsLoggedIn, clearLocalStorage }) => {
           {/* Toggle */}
           <button 
             onClick={() => setIsRegister(!isRegister)} 
-            className="w-full text-blue-300 mt-4 hover:text-blue-200 transition-colors text-center"
+            className={`w-full mt-4 transition-colors text-center ${theme === 'dark' ? 'text-blue-300 hover:text-blue-200' : 'text-blue-700 hover:text-blue-800'}`}
           >
             {isRegister ? 'Already have an account? Sign In' : 'Need an account? Create One'}
           </button>
         </div>
 
         {/* Features */}
-        <div className="mt-8 text-center text-gray-300">
+        <div className={`mt-8 text-center ${theme === 'dark' ? 'text-gray-300' : 'text-slate-600'}`}>
           <p className="text-sm">✨ AI-powered learning • 📚 Multiple subjects • 🔧 Code debugging</p>
         </div>
       </div>
