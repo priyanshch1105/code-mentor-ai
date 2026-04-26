@@ -18,6 +18,7 @@ openai
 
 # Data Processing and Utilities
 pydantic
+pydantic-settings
 pydantic_core
 requests
 python-dateutil
