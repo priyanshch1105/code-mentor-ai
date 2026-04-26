@@ -5,7 +5,7 @@ Centralized logging setup for the application
 import logging
 import logging.handlers
 import os
-from config import settings
+from config.settings import settings
 
 # Create logs directory if it doesn't exist
 LOG_DIR = "logs"
