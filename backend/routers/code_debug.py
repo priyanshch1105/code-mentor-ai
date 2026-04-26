@@ -26,11 +26,14 @@ def get_llm():
 class CodeBody(BaseModel):
     code: str
     language: str = "python"
+    mode: str = "debug"
+    instruction: Optional[str] = None
 
 
 class CodeSessionResponse(BaseModel):
     session_id: int
     response: str
+    response_roman: Optional[str] = None
     session_name: str
     has_error: bool
     error_message: Optional[str] = None
@@ -54,6 +57,34 @@ def generate_session_name(code: str, language: str) -> str:
     return f"{language} code snippet"
 
 
+def build_debug_prompt(body: CodeBody) -> str:
+    mode_instructions = {
+        "debug": "Find bugs, runtime errors, syntax mistakes, and edge cases. Provide a corrected version.",
+        "explain": "Explain this code line by line in simple language and identify important concepts.",
+        "optimize": "Improve readability, performance, structure, and best practices. Show the improved code.",
+    }
+    instruction = body.instruction or mode_instructions.get(body.mode, mode_instructions["debug"])
+
+    return f"""
+You are a senior {body.language} mentor.
+
+Task:
+{instruction}
+
+Return a clear Markdown response with:
+1. Summary
+2. Issues found
+3. Fixed or improved code
+4. Explanation
+5. Next steps
+
+Code:
+```{body.language}
+{body.code}
+```
+"""
+
+
 # ---------------- DEBUG ---------------- #
 
 @router.post("/debug", response_model=CodeSessionResponse)
@@ -70,17 +101,7 @@ def debug_code(
         session_name = generate_session_name(body.code, body.language)
 
         # ✅ Grok prompt (clean + structured)
-        prompt = f"""
-Analyze this {body.language} code.
-
-Return:
-1. Errors
-2. Fix
-3. Explanation
-
-Code:
-{body.code}
-"""
+        prompt = build_debug_prompt(body)
 
         try:
             response = llm.generate_response(prompt)
@@ -108,6 +129,7 @@ Code:
         return CodeSessionResponse(
             session_id=session.id,
             response=response,
+            response_roman=session.response_roman,
             session_name=session_name,
             has_error=has_error,
             error_message=error_message
@@ -134,7 +156,8 @@ def get_sessions(
             "id": s.id,
             "name": s.name,
             "language": s.language,
-            "created_at": s.created_at
+            "created_at": s.created_at,
+            "code_preview": s.code_input[:160]
         }
         for s in sessions
     ]
@@ -156,8 +179,13 @@ def get_session(
 
     return {
         "id": s.id,
+        "name": s.name,
+        "language": s.language,
+        "created_at": s.created_at,
+        "code_input": s.code_input,
         "code": s.code_input,
-        "response": s.response
+        "response": s.response,
+        "response_roman": s.response_roman
     }
 
 
