@@ -10,20 +10,30 @@ const ChatHistory = memo(({ messages, onEditMessage }) => {
   }, [onEditMessage]);
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-gray-900 text-white">
+    <div className="space-y-6">
       {messages.length === 0 ? (
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center text-gray-400">
-            <div className="text-6xl mb-4">🤖</div>
-            <h3 className="text-xl font-semibold mb-2">Welcome to Code Mentor!</h3>
-            <p className="text-sm">Start a conversation to begin learning</p>
-            <div className="mt-6 text-xs text-gray-500">
-              <p className="mb-2">💡 Tips:</p>
-              <ul className="space-y-1">
-                <li>• Ask questions in English or Roman Urdu</li>
-                <li>• Use markdown formatting for better responses</li>
-                <li>• Hover over messages to copy or edit them</li>
-              </ul>
+        <div className="min-h-[46vh] flex items-center justify-center">
+          <div className="max-w-2xl w-full text-center">
+            <div className="text-4xl mb-4">✨</div>
+            <h3 className="text-3xl font-semibold mb-2">How can I help you today?</h3>
+            <p className="text-sm theme-muted">Ask anything about coding, quizzes, or debugging.</p>
+            <div className="mt-8 grid gap-3 sm:grid-cols-2 text-left">
+              <div className="theme-surface theme-border border rounded-xl p-4">
+                <p className="text-sm font-medium">Debug my Python code</p>
+                <p className="text-xs theme-muted mt-1">Find issue and explain fix step-by-step</p>
+              </div>
+              <div className="theme-surface theme-border border rounded-xl p-4">
+                <p className="text-sm font-medium">Create a quiz from this topic</p>
+                <p className="text-xs theme-muted mt-1">Generate MCQs with answers and hints</p>
+              </div>
+              <div className="theme-surface theme-border border rounded-xl p-4">
+                <p className="text-sm font-medium">Explain concept in simple words</p>
+                <p className="text-xs theme-muted mt-1">Use beginner-friendly analogies</p>
+              </div>
+              <div className="theme-surface theme-border border rounded-xl p-4">
+                <p className="text-sm font-medium">Review my approach</p>
+                <p className="text-xs theme-muted mt-1">Suggest cleaner and faster solution</p>
+              </div>
             </div>
           </div>
         </div>
