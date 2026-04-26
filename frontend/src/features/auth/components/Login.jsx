@@ -25,27 +25,25 @@ const Login = ({ setIsLoggedIn, clearLocalStorage }) => {
 
     setLoading(true);
     try {
-      let res;
       if (isRegister) {
-        res = await api.post('/api/auth/register', form);
-        toast.success('Registered successfully! Please login.');
-        setIsRegister(false);
-        setForm({ username: '', email: '', password: '' });
-      } else {
-        const formData = new URLSearchParams();
-        formData.append('username', form.username);
-        formData.append('password', form.password);
-        
-        res = await api.post('/api/auth/login', formData.toString(), {
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-        });
-        
-        Cookies.set('token', res.data.access_token, { expires: 7 });
-        clearLocalStorage();
-        setIsLoggedIn(true);
-        toast.success('Logged in successfully!');
-        navigate('/');
+        await api.post('/api/auth/register', form);
+        toast.success('Registered successfully! Logging you in...');
       }
+
+      const formData = new URLSearchParams();
+      formData.append('username', form.username);
+      formData.append('password', form.password);
+
+      const loginRes = await api.post('/api/auth/login', formData.toString(), {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      });
+
+      Cookies.set('token', loginRes.data.access_token, { expires: 7 });
+      api.defaults.headers.common.Authorization = `Bearer ${loginRes.data.access_token}`;
+      clearLocalStorage();
+      setIsLoggedIn(true);
+      toast.success('Logged in successfully!');
+      navigate('/', { replace: true });
     } catch (err) {
       toast.error('Error: ' + (err.response?.data?.detail || err.message));
     } finally {
