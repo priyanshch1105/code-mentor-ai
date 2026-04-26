@@ -18,13 +18,13 @@ const AssistantMessage = memo(({ content, timestamp }) => {
     <div className="flex justify-start">
       <div className="flex items-start space-x-3 max-w-3xl">
         {/* Avatar */}
-        <div className="w-8 h-8 min-w-[32px] rounded-full flex items-center justify-center shrink-0 bg-gradient-to-r from-purple-500 to-purple-600">
-          <Bot size={16} className="text-white" />
+        <div className="w-8 h-8 min-w-[32px] rounded-md flex items-center justify-center shrink-0 theme-surface-soft theme-border border">
+          <Bot size={15} className="theme-muted" />
         </div>
 
         {/* Message Content */}
         <div className="flex flex-col space-y-1 items-start flex-1">
-          <div className="px-4 py-3 rounded-2xl bg-gray-800 text-gray-100 shadow-lg w-full">
+          <div className="px-1 py-1 rounded-xl w-full">
             <MessageRenderer content={content} />
           </div>
 
@@ -41,7 +41,7 @@ const AssistantMessage = memo(({ content, timestamp }) => {
             <TextToSpeech text={content} />
             <button
               onClick={handleCopyAll}
-              className="flex items-center space-x-1 text-xs text-purple-400 hover:text-purple-300 transition-colors"
+              className="flex items-center space-x-1 text-xs text-blue-500 hover:text-blue-400 transition-colors"
               title="Copy message"
             >
               {copied ? <Check size={12} /> : <Copy size={12} />}
