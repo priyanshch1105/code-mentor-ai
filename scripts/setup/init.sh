@@ -39,7 +39,8 @@ if [ ! -d ".venv" ]; then
 fi
 
 source .venv/bin/activate 2>/dev/null || .venv\Scripts\activate
-pip install -r requirements.txt
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 echo "  - Installed dependencies"
 
 # Frontend setup
