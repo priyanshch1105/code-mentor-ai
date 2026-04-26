@@ -36,19 +36,19 @@ const UserMessage = memo(({ content, timestamp, onEdit }) => {
     <div className="flex justify-end">
       <div className="flex items-start space-x-3 max-w-3xl flex-row-reverse space-x-reverse">
         {/* Avatar */}
-        <div className="w-8 h-8 min-w-[32px] rounded-full flex items-center justify-center shrink-0 bg-gradient-to-r from-blue-500 to-blue-600">
-          <User size={16} className="text-white" />
+        <div className="w-8 h-8 min-w-[32px] rounded-md flex items-center justify-center shrink-0 theme-surface-soft theme-border border">
+          <User size={15} className="theme-muted" />
         </div>
 
         {/* Message Content */}
         <div className="flex flex-col space-y-1 items-end">
           {isEditing ? (
             // Edit Mode
-            <div className="bg-gray-700 rounded-2xl p-3 shadow-lg w-full min-w-[300px]">
+            <div className="theme-surface theme-border border rounded-2xl p-3 shadow-sm w-full min-w-[300px]">
               <textarea
                 value={editedContent}
                 onChange={(e) => setEditedContent(e.target.value)}
-                className="w-full bg-gray-800 text-white p-2 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full theme-surface-soft theme-text p-2 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
                 rows={3}
                 autoFocus
               />
