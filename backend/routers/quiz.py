@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
-from typing import List, Dict, Optional
+from sqlalchemy.orm.attributes import flag_modified
+from typing import List, Optional
 from datetime import datetime, timezone
-import json, re, random
+import json, re
 
 from db import get_db
 from models.user import User
@@ -23,10 +24,11 @@ def get_llm_service():
 # ---------------- MODELS ---------------- #
 
 class QuizCreate(BaseModel):
-    subject: str
+    subject: str = Field(..., min_length=2, max_length=40)
     difficulty: str = "beginner"
     quiz_type: str = "mixed"
-    total_questions: int = 5
+    total_questions: int = Field(default=10, ge=1, le=20)
+    time_limit: int = Field(default=600, ge=60, le=3600)
 
 
 class QuizAnswer(BaseModel):
@@ -38,6 +40,7 @@ class QuizAnswer(BaseModel):
 class QuizSubmit(BaseModel):
     quiz_id: int
     answers: List[QuizAnswer]
+    total_time_taken: Optional[int] = 0
 
 
 # ---------------- AI QUESTION GENERATION ---------------- #
@@ -53,10 +56,13 @@ Return JSON:
 {{
  "question_text": "...",
  "question_type": "multiple_choice",
- "options": ["A","B","C","D"],
+ "options": ["option 1","option 2","option 3","option 4"],
  "correct_answer": "...",
  "explanation": "..."
 }}
+Rules:
+- correct_answer must exactly match one item from options.
+- Do not include markdown or text outside JSON.
 """
 
         try:
@@ -65,24 +71,65 @@ Return JSON:
 
             if match:
                 q = json.loads(match.group())
-                q["points"] = 10
-                questions.append(q)
+                questions.append(normalize_question(q, subject))
             else:
-                questions.append(fallback_question(subject))
+                questions.append(fallback_question(subject, i))
 
         except:
-            questions.append(fallback_question(subject))
+            questions.append(fallback_question(subject, i))
 
     return questions
 
 
-def fallback_question(subject):
+def normalize_question(question, subject):
+    options = question.get("options") or []
+    if not isinstance(options, list):
+        options = []
+
+    options = [str(option).strip() for option in options if str(option).strip()]
+    if len(options) < 2:
+        return fallback_question(subject, 0)
+
+    correct_answer = str(question.get("correct_answer") or "").strip()
+    if correct_answer not in options:
+        correct_answer = options[0]
+
     return {
-        "question_text": "What is Python?",
+        "question_text": str(question.get("question_text") or f"What is important in {subject}?").strip(),
         "question_type": "multiple_choice",
-        "options": ["Language", "Animal", "Car", "Game"],
-        "correct_answer": "Language",
-        "points": 10
+        "options": options[:4],
+        "correct_answer": correct_answer,
+        "explanation": str(question.get("explanation") or "Review the correct option and compare it with your answer.").strip(),
+        "points": 10,
+    }
+
+
+def fallback_question(subject, index=0):
+    fallback_questions = [
+        {
+            "question_text": f"What is a core concept in {subject}?",
+            "options": ["A basic principle", "A random guess", "An unrelated topic", "None of these"],
+            "correct_answer": "A basic principle",
+        },
+        {
+            "question_text": f"What is the best first step when learning {subject}?",
+            "options": ["Understand basics", "Skip practice", "Memorize randomly", "Avoid examples"],
+            "correct_answer": "Understand basics",
+        },
+        {
+            "question_text": f"Why should you practice {subject} questions?",
+            "options": ["To build skill", "To avoid learning", "To forget concepts", "To waste time"],
+            "correct_answer": "To build skill",
+        },
+    ]
+    selected = fallback_questions[index % len(fallback_questions)]
+    return {
+        "question_text": selected["question_text"],
+        "question_type": "multiple_choice",
+        "options": selected["options"],
+        "correct_answer": selected["correct_answer"],
+        "explanation": "This fallback question is used when the AI could not return valid JSON.",
+        "points": 10,
     }
 
 
@@ -92,23 +139,23 @@ def calculate_score(answers, questions, llm):
     total = 0
     max_score = 0
     results = []
+    answer_map = {answer.question_id: answer for answer in answers}
 
-    for ans in answers:
-        q = next((x for x in questions if x.id == ans.question_id), None)
-        if not q:
-            continue
-
+    for q in questions:
+        ans = answer_map.get(q.id)
         max_score += q.points
+        user_answer = ans.user_answer if ans else ""
+        time_taken = ans.time_taken if ans else 0
 
         if q.question_type == "multiple_choice":
-            correct = ans.user_answer.strip().lower() == q.correct_answer.strip().lower()
+            correct = user_answer.strip().lower() == q.correct_answer.strip().lower()
             score = q.points if correct else 0
 
         else:
             prompt = f"""
 Score answer 0-100.
 
-User: {ans.user_answer}
+User: {user_answer}
 Correct: {q.correct_answer}
 """
             try:
@@ -124,8 +171,14 @@ Correct: {q.correct_answer}
 
         results.append({
             "question_id": q.id,
+            "question_text": q.question_text,
+            "user_answer": user_answer,
+            "correct_answer": q.correct_answer,
+            "explanation": q.explanation,
             "is_correct": correct,
-            "points": score
+            "points_earned": score,
+            "max_points": q.points,
+            "time_taken": time_taken,
         })
 
     return {
@@ -145,20 +198,27 @@ def create_quiz(
     current_user: User = Depends(get_current_user),
     llm: GrokService = Depends(get_llm_service)
 ):
+    difficulty = body.difficulty.lower().strip()
+    if difficulty not in {"beginner", "intermediate", "advanced"}:
+        raise HTTPException(status_code=422, detail="difficulty must be beginner, intermediate, or advanced")
+
+    subject = body.subject.lower().strip()
     quiz = Quiz(
         user_id=current_user.id,
-        subject=body.subject,
-        title=f"{body.subject} Quiz",
-        difficulty=body.difficulty,
-        total_questions=body.total_questions
+        subject=subject,
+        title=f"{difficulty.title()} {subject.title()} Quiz",
+        difficulty=difficulty,
+        quiz_type=body.quiz_type,
+        total_questions=body.total_questions,
+        time_limit=body.time_limit,
     )
 
     db.add(quiz)
     db.flush()
 
     questions = generate_quiz_questions(
-        body.subject,
-        body.difficulty,
+        subject,
+        difficulty,
         body.total_questions,
         llm
     )
@@ -170,13 +230,23 @@ def create_quiz(
             question_type=q["question_type"],
             options=q.get("options"),
             correct_answer=q["correct_answer"],
+            explanation=q.get("explanation"),
+            difficulty=difficulty,
             points=q["points"],
             order=i + 1
         ))
 
     db.commit()
+    db.refresh(quiz)
 
-    return {"quiz_id": quiz.id}
+    return {
+        "quiz_id": quiz.id,
+        "title": quiz.title,
+        "subject": quiz.subject,
+        "difficulty": quiz.difficulty,
+        "total_questions": quiz.total_questions,
+        "time_limit": quiz.time_limit,
+    }
 
 
 # ---------------- GET QUESTIONS ---------------- #
@@ -197,14 +267,24 @@ def get_questions(
 
     qs = db.query(QuizQuestion).filter(
         QuizQuestion.quiz_id == quiz_id
-    ).all()
+    ).order_by(QuizQuestion.order.asc()).all()
 
-    return [{
-        "id": q.id,
-        "question_text": q.question_text,
-        "options": q.options,
-        "type": q.question_type
-    } for q in qs]
+    return {
+        "quiz_id": quiz.id,
+        "title": quiz.title,
+        "subject": quiz.subject,
+        "difficulty": quiz.difficulty,
+        "total_questions": quiz.total_questions,
+        "time_limit": quiz.time_limit,
+        "questions": [{
+            "id": q.id,
+            "question_text": q.question_text,
+            "question_type": q.question_type,
+            "options": q.options or [],
+            "points": q.points,
+            "order": q.order,
+        } for q in qs],
+    }
 
 
 # ---------------- SUBMIT QUIZ ---------------- #
@@ -226,22 +306,73 @@ def submit_quiz(
 
     questions = db.query(QuizQuestion).filter(
         QuizQuestion.quiz_id == body.quiz_id
-    ).all()
+    ).order_by(QuizQuestion.order.asc()).all()
+
+    if not questions:
+        raise HTTPException(400, "Quiz has no questions")
 
     result = calculate_score(body.answers, questions, llm)
+
+    db.query(QuizAttempt).filter(
+        QuizAttempt.quiz_id == body.quiz_id,
+        QuizAttempt.user_id == current_user.id
+    ).delete(synchronize_session=False)
+    db.query(QuizSession).filter(
+        QuizSession.quiz_id == body.quiz_id,
+        QuizSession.user_id == current_user.id
+    ).delete(synchronize_session=False)
+
+    for item in result["results"]:
+        db.add(QuizAttempt(
+            quiz_id=body.quiz_id,
+            question_id=item["question_id"],
+            user_id=current_user.id,
+            user_answer=item["user_answer"],
+            is_correct=item["is_correct"],
+            points_earned=round(item["points_earned"]),
+            time_taken=item["time_taken"],
+        ))
 
     session = QuizSession(
         user_id=current_user.id,
         quiz_id=body.quiz_id,
         total_score=result["total_score"],
+        max_possible_score=result["max_score"],
         percentage=result["percentage"],
+        time_taken=body.total_time_taken or 0,
+        status="completed",
         completed_at=datetime.now(timezone.utc)
     )
+
+    quiz.status = "completed"
+    quiz.completed_at = datetime.now(timezone.utc)
+
+    progress = current_user.progress or {}
+    current_score = float(progress.get(quiz.subject, 0) or 0)
+    updated_score = round((current_score * 0.6) + (result["percentage"] * 0.4), 2)
+    progress = {**progress, quiz.subject: updated_score}
+    current_user.progress = progress
+    flag_modified(current_user, "progress")
 
     db.add(session)
     db.commit()
 
-    return result
+    correct_answers = sum(1 for item in result["results"] if item["is_correct"])
+    total_questions = len(questions)
+
+    return {
+        "quiz_id": body.quiz_id,
+        "total_score": result["total_score"],
+        "max_score": result["max_score"],
+        "percentage": result["percentage"],
+        "correct_answers": correct_answers,
+        "wrong_answers": max(total_questions - correct_answers, 0),
+        "total_questions": total_questions,
+        "time_taken": body.total_time_taken or 0,
+        "detailed_results": result["results"],
+        "progress_updated": updated_score,
+        "message": f"Your {quiz.subject} progress is now {updated_score}%.",
+    }
 
 
 # ---------------- QUIZ HISTORY ---------------- #
@@ -256,13 +387,24 @@ def get_quiz_history(
         QuizSession.user_id == current_user.id
     ).order_by(QuizSession.completed_at.desc()).all()
 
-    return [{
-        "id": s.id,
-        "quiz_id": s.quiz_id,
-        "total_score": s.total_score,
-        "percentage": s.percentage,
-        "completed_at": s.completed_at.isoformat() if s.completed_at else None
-    } for s in sessions]
+    quiz_history = []
+    for s in sessions:
+        quiz = s.quiz
+        quiz_history.append({
+            "id": s.id,
+            "quiz_id": s.quiz_id,
+            "title": quiz.title if quiz else "Quiz",
+            "subject": quiz.subject if quiz else "general",
+            "difficulty": quiz.difficulty if quiz else "beginner",
+            "score": s.total_score,
+            "max_score": s.max_possible_score,
+            "total_score": s.total_score,
+            "percentage": s.percentage,
+            "time_taken": s.time_taken or 0,
+            "completed_at": s.completed_at.isoformat() if s.completed_at else None
+        })
+
+    return {"quiz_history": quiz_history}
 
 
 # ---------------- QUIZ RECOMMENDATIONS ---------------- #
@@ -278,10 +420,10 @@ def get_quiz_recommendations(
     if not progress:
         return {
             "recommendations": [
-                {"subject": "math", "reason": "Start with Basic Math"},
-                {"subject": "coding", "reason": "Start with Coding Basics"},
-                {"subject": "physics", "reason": "Start with Physics Basics"},
-                {"subject": "ielts", "reason": "Start with IELTS Preparation"}
+                {"subject": "math", "difficulty": "beginner", "quiz_type": "mixed", "reason": "Start with Basic Math"},
+                {"subject": "coding", "difficulty": "beginner", "quiz_type": "mixed", "reason": "Start with Coding Basics"},
+                {"subject": "physics", "difficulty": "beginner", "quiz_type": "mixed", "reason": "Start with Physics Basics"},
+                {"subject": "ielts", "difficulty": "beginner", "quiz_type": "mixed", "reason": "Start with IELTS Preparation"}
             ],
             "message": "Complete quizzes to get personalized recommendations"
         }
@@ -297,6 +439,7 @@ def get_quiz_recommendations(
         recommendations.append({
             "subject": weakest_subject,
             "difficulty": "intermediate",
+            "quiz_type": "mixed",
             "reason": f"Your score in {weakest_subject} is {weakest_score}%. Improve this first!"
         })
     
@@ -307,6 +450,7 @@ def get_quiz_recommendations(
             recommendations.append({
                 "subject": subject,
                 "difficulty": difficulty,
+                "quiz_type": "mixed",
                 "reason": f"You're doing well in {subject}. Try {difficulty} quizzes!"
             })
     
