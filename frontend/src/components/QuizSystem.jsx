@@ -39,7 +39,7 @@ const QuizSystem = ({ setCurrentView }) => {
     }
   };
 
-  const createQuiz = async (subject, difficulty, quizType = 'mixed') => {
+  const createQuiz = async (subject, difficulty = 'beginner', quizType = 'mixed') => {
     try {
       setLoading(true);
       const response = await api.post('/api/quiz/create', {
@@ -55,15 +55,31 @@ const QuizSystem = ({ setCurrentView }) => {
       
       // Fetch quiz questions
       const questionsResponse = await api.get(`/api/quiz/${quizData.quiz_id}/questions`);
-      setQuestions(questionsResponse.data.questions);
-      setTimeLeft(questionsResponse.data.time_limit);
+      const questionPayload = questionsResponse.data;
+      const loadedQuestions = Array.isArray(questionPayload) ? questionPayload : questionPayload.questions || [];
+      const normalizedQuestions = loadedQuestions.map((question, index) => ({
+        ...question,
+        question_type: question.question_type || question.type || 'multiple_choice',
+        options: question.options || [],
+        points: question.points || 10,
+        order: question.order || index + 1,
+      }));
+
+      setCurrentQuiz({
+        ...quizData,
+        title: quizData.title || questionPayload.title || `${difficulty} ${subject} Quiz`,
+        total_questions: quizData.total_questions || normalizedQuestions.length,
+        time_limit: quizData.time_limit || questionPayload.time_limit || 600,
+      });
+      setQuestions(normalizedQuestions);
+      setTimeLeft(quizData.time_limit || questionPayload.time_limit || 600);
       setQuizStatus('active');
       setCurrentQuestionIndex(0);
       setAnswers({});
       setQuizStartTime(Date.now());
       setCurrentQuestionStartTime(Date.now());
       
-      toast.success(`Quiz created! ${quizData.total_questions} questions, ${Math.floor(quizData.time_limit / 60)} minutes`);
+      toast.success(`Quiz created! ${normalizedQuestions.length} questions, ${Math.floor((quizData.time_limit || questionPayload.time_limit || 600) / 60)} minutes`);
     } catch (error) {
       toast.error('Failed to create quiz: ' + (error.response?.data?.detail || error.message));
     } finally {
@@ -127,7 +143,20 @@ const QuizSystem = ({ setCurrentView }) => {
       // Calculate total time taken
       const totalTimeTaken = Math.floor((Date.now() - quizStartTime) / 1000);
       
-      const quizAnswers = Object.entries(answers).map(([questionId, answer]) => {
+      const currentQuestion = questions[currentQuestionIndex];
+      const currentAnswer = answers[currentQuestion?.id];
+      const currentQuestionTime = currentQuestion ? Math.floor((Date.now() - currentQuestionStartTime) / 1000) : 0;
+      const finalAnswers = currentQuestion && currentAnswer
+        ? {
+            ...answers,
+            [currentQuestion.id]: typeof currentAnswer === 'object'
+              ? { ...currentAnswer, time_taken: (currentAnswer.time_taken || 0) + currentQuestionTime }
+              : { answer: currentAnswer, time_taken: currentQuestionTime },
+          }
+        : answers;
+
+      const quizAnswers = questions.map((question) => {
+        const answer = finalAnswers[question.id];
         // Handle both string answers and object answers with time_taken
         let answerText = '';
         let timeTaken = 0;
@@ -145,7 +174,7 @@ const QuizSystem = ({ setCurrentView }) => {
         answerText = String(answerText || '');
         
         return {
-          question_id: parseInt(questionId),
+          question_id: parseInt(question.id),
           user_answer: answerText,
           time_taken: parseInt(timeTaken) || 0
         };
@@ -219,6 +248,16 @@ const QuizSystem = ({ setCurrentView }) => {
           <p className="text-gray-300">
             {quizResult.correct_answers} out of {quizResult.total_questions} questions correct
           </p>
+          <div className="mt-4 grid grid-cols-2 gap-3 max-w-md mx-auto">
+            <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-3">
+              <p className="text-2xl font-bold text-green-400">{quizResult.correct_answers}</p>
+              <p className="text-xs text-gray-300">Correct</p>
+            </div>
+            <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3">
+              <p className="text-2xl font-bold text-red-400">{quizResult.wrong_answers ?? Math.max((quizResult.total_questions || 0) - (quizResult.correct_answers || 0), 0)}</p>
+              <p className="text-xs text-gray-300">Wrong</p>
+            </div>
+          </div>
           <p className="text-sm text-gray-400 mt-2">
             Time taken: {formatTime(quizResult.time_taken)}
           </p>
@@ -242,7 +281,7 @@ const QuizSystem = ({ setCurrentView }) => {
                 </div>
                 <p className="text-sm text-gray-200 mb-1">{result.question_text}</p>
                 <div className="text-xs text-gray-400">
-                  <span className="text-blue-400">Your answer:</span> {result.user_answer}
+                  <span className="text-blue-400">Your answer:</span> {result.user_answer || 'Not answered'}
                 </div>
                 {!result.is_correct && (
                   <div className="text-xs text-gray-400 mt-1">
@@ -280,7 +319,7 @@ const QuizSystem = ({ setCurrentView }) => {
             onClick={() => setCurrentView('quiz-analytics')}
             className="flex-1 bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg text-white transition-colors"
           >
-            View Dashboard
+            View Quiz Dashboard
           </button>
         </div>
       </div>
@@ -441,7 +480,7 @@ const QuizSystem = ({ setCurrentView }) => {
                 </div>
                 <p className="text-xs lg:text-sm text-gray-300 mb-3">{rec.reason}</p>
                 <button
-                  onClick={() => createQuiz(rec.subject, rec.difficulty, rec.quiz_type)}
+                  onClick={() => createQuiz(rec.subject, rec.difficulty || 'beginner', rec.quiz_type || 'mixed')}
                   disabled={loading}
                   className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg text-white text-xs lg:text-sm transition-colors font-medium"
                 >
