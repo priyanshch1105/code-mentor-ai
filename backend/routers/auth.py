@@ -10,7 +10,7 @@ from db import get_db
 from models.user import User
 import bcrypt
 import jwt
-from config import settings
+from config.settings import settings
 from datetime import datetime, timedelta, timezone
 from logger import get_logger
 
