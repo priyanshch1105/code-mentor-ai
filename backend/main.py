@@ -9,7 +9,7 @@ from db import engine
 from models.base import Base
 from models import User, Session, Message, CodeSession, Quiz, QuizQuestion, QuizAttempt, QuizSession
 from sqlalchemy import text
-from config import settings
+from config.settings import settings
 from logger import get_logger
 
 logger = get_logger(__name__)
@@ -22,6 +22,16 @@ try:
     with engine.connect() as conn:
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS history JSON DEFAULT '[]'::json"))
         conn.execute(text("ALTER TABLE code_sessions ADD COLUMN IF NOT EXISTS response_roman TEXT"))
+        conn.execute(text("ALTER TABLE quizzes ADD COLUMN IF NOT EXISTS quiz_type VARCHAR DEFAULT 'mixed'"))
+        conn.execute(text("ALTER TABLE quizzes ADD COLUMN IF NOT EXISTS time_limit INTEGER DEFAULT 600"))
+        conn.execute(text("ALTER TABLE quizzes ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'active'"))
+        conn.execute(text("ALTER TABLE quizzes ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP"))
+        conn.execute(text("ALTER TABLE quiz_questions ADD COLUMN IF NOT EXISTS explanation TEXT"))
+        conn.execute(text("ALTER TABLE quiz_questions ADD COLUMN IF NOT EXISTS difficulty VARCHAR DEFAULT 'beginner'"))
+        conn.execute(text("ALTER TABLE quiz_sessions ADD COLUMN IF NOT EXISTS max_possible_score FLOAT DEFAULT 0"))
+        conn.execute(text("ALTER TABLE quiz_sessions ADD COLUMN IF NOT EXISTS time_taken INTEGER DEFAULT 0"))
+        conn.execute(text("ALTER TABLE quiz_sessions ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'completed'"))
+        conn.execute(text("ALTER TABLE quiz_sessions ADD COLUMN IF NOT EXISTS started_at TIMESTAMP"))
         conn.commit()
         logger.info("Database schema verified")
 except Exception as e:
