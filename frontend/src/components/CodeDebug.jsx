@@ -1,58 +1,181 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Editor from '@monaco-editor/react';
+import {
+  MdAutoFixHigh,
+  MdBugReport,
+  MdClose,
+  MdContentCopy,
+  MdDelete,
+  MdHistory,
+  MdPlayArrow,
+  MdRefresh,
+  MdSearch,
+  MdTerminal,
+} from 'react-icons/md';
 import { toast } from 'react-toastify';
 import api from '../services/api';
 import { formatDateTime } from '../utils/timeUtils';
 import MessageRenderer from './MessageRenderer';
 
+const languages = [
+  { value: 'python', label: 'Python', sample: "def add(a, b):\n    return a + b\n\nprint(add(2, '3'))" },
+  { value: 'javascript', label: 'JavaScript', sample: "function total(items) {\n  return items.map(item => item.price).reduce((a, b) => a + b)\n}\n\nconsole.log(total([]))" },
+  { value: 'java', label: 'Java', sample: "class Main {\n  public static void main(String[] args) {\n    String name = null;\n    System.out.println(name.length());\n  }\n}" },
+  { value: 'cpp', label: 'C++', sample: "#include <iostream>\nusing namespace std;\n\nint main() {\n  int *x = nullptr;\n  cout << *x;\n}" },
+  { value: 'sql', label: 'SQL', sample: "SELECT name, COUNT(*)\nFROM users\nWHERE active = true;" },
+];
+
+const modes = [
+  {
+    id: 'debug',
+    label: 'Debug',
+    icon: MdBugReport,
+    instruction: 'Find bugs, runtime errors, syntax mistakes, and edge cases. Give a corrected version.',
+  },
+  {
+    id: 'explain',
+    label: 'Explain',
+    icon: MdTerminal,
+    instruction: 'Explain this code line by line in simple language and identify important concepts.',
+  },
+  {
+    id: 'optimize',
+    label: 'Optimize',
+    icon: MdAutoFixHigh,
+    instruction: 'Improve readability, performance, structure, and best practices. Show the improved code.',
+  },
+];
+
+const runJavaScriptInWorker = (code) => {
+  return new Promise((resolve, reject) => {
+    const workerSource = `
+      const format = (value) => {
+        if (typeof value === 'string') return value;
+        try { return JSON.stringify(value); } catch { return String(value); }
+      };
+
+      self.onmessage = (event) => {
+        const logs = [];
+        const console = {
+          log: (...args) => logs.push(args.map(format).join(' ')),
+          warn: (...args) => logs.push('Warning: ' + args.map(format).join(' ')),
+          error: (...args) => logs.push('Error: ' + args.map(format).join(' ')),
+        };
+
+        try {
+          const result = Function('console', '"use strict";\\n' + event.data)(console);
+          if (result !== undefined) logs.push('Return: ' + format(result));
+          self.postMessage({ ok: true, output: logs.join('\\n') || 'Code ran successfully with no console output.' });
+        } catch (error) {
+          self.postMessage({ ok: false, error: error && error.message ? error.message : String(error) });
+        }
+      };
+    `;
+
+    const blob = new Blob([workerSource], { type: 'application/javascript' });
+    const worker = new Worker(URL.createObjectURL(blob));
+    const timeout = window.setTimeout(() => {
+      worker.terminate();
+      reject(new Error('Execution timed out after 3 seconds'));
+    }, 3000);
+
+    worker.onmessage = (event) => {
+      window.clearTimeout(timeout);
+      worker.terminate();
+      if (event.data.ok) {
+        resolve(event.data.output);
+      } else {
+        reject(new Error(event.data.error));
+      }
+    };
+
+    worker.onerror = (error) => {
+      window.clearTimeout(timeout);
+      worker.terminate();
+      reject(new Error(error.message || 'Worker execution failed'));
+    };
+
+    worker.postMessage(code);
+  });
+};
+
 const CodeDebug = () => {
   const [codeInput, setCodeInput] = useState('');
   const [language, setLanguage] = useState('python');
+  const [analysisMode, setAnalysisMode] = useState('debug');
   const [debugResponse, setDebugResponse] = useState('');
   const [debugResponseRoman, setDebugResponseRoman] = useState('');
+  const [runOutput, setRunOutput] = useState('');
   const [showRoman, setShowRoman] = useState(false);
   const [responseLoading, setResponseLoading] = useState(false);
+  const [runLoading, setRunLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [codeSessions, setCodeSessions] = useState([]);
   const [selectedSession, setSelectedSession] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [historySearch, setHistorySearch] = useState('');
 
-  // Load code sessions on component mount
   useEffect(() => {
     loadCodeSessions();
   }, []);
 
+  const selectedLanguage = languages.find((item) => item.value === language) || languages[0];
+  const selectedMode = modes.find((mode) => mode.id === analysisMode) || modes[0];
+
+  const filteredSessions = useMemo(() => {
+    const query = historySearch.trim().toLowerCase();
+    if (!query) return codeSessions;
+
+    return codeSessions.filter((session) => {
+      return [session.name, session.language, session.created_at]
+        .some((value) => String(value || '').toLowerCase().includes(query));
+    });
+  }, [codeSessions, historySearch]);
+
   const loadCodeSessions = async () => {
     try {
+      setHistoryLoading(true);
       const response = await api.get('/api/code/sessions');
-      setCodeSessions(response.data);
+      setCodeSessions(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Failed to load code sessions:', error);
+      toast.error('Could not load code history');
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
   const handleDebug = async () => {
     if (!codeInput.trim()) {
-      toast.warning('Please enter some code to debug');
+      toast.warning('Please enter some code first');
       return;
     }
 
     setResponseLoading(true);
+    setDebugResponse('');
+    setDebugResponseRoman('');
+
     try {
       const response = await api.post('/api/code/debug', {
+        language,
+        mode: analysisMode,
+        instruction: selectedMode.instruction,
         code: codeInput,
-        language: language
       });
 
-      setDebugResponse(response.data.response);
+      setDebugResponse(response.data.response || 'No analysis returned.');
       setDebugResponseRoman(response.data.response_roman || '');
-      toast.success(`Code analyzed! Session: ${response.data.session_name}`);
-      
-      // Reload sessions to show new one
+      setSelectedSession({
+        id: response.data.session_id,
+        name: response.data.session_name,
+        language,
+      });
+      toast.success(`Code analyzed: ${response.data.session_name || 'new session'}`);
       loadCodeSessions();
-      
     } catch (error) {
-      toast.error('Debug failed: ' + (error.response?.data?.detail || error.message));
-      setDebugResponse('Error occurred while analyzing code.');
+      const detail = error.response?.data?.detail || error.message;
+      toast.error('Debug failed: ' + detail);
+      setDebugResponse(`Analysis failed: ${detail}`);
     } finally {
       setResponseLoading(false);
     }
@@ -62,23 +185,81 @@ const CodeDebug = () => {
     setCodeInput('');
     setDebugResponse('');
     setDebugResponseRoman('');
+    setRunOutput('');
     setShowRoman(false);
     setSelectedSession(null);
+  };
+
+  const loadSample = () => {
+    setCodeInput(selectedLanguage.sample);
+    setDebugResponse('');
+    setDebugResponseRoman('');
+    setRunOutput('');
+    setSelectedSession(null);
+  };
+
+  const handleRunCode = async () => {
+    if (!codeInput.trim()) {
+      toast.warning('Please enter some code first');
+      return;
+    }
+
+    setRunLoading(true);
+    setRunOutput('');
+
+    try {
+      if (language !== 'javascript') {
+        setRunOutput(
+          `Run is currently available in the browser for JavaScript only.\n\nSelected language: ${selectedLanguage.label}\nUse Debug/Explain/Optimize for AI analysis, or add a backend runner endpoint for ${selectedLanguage.label}.`
+        );
+        toast.info('Run currently supports JavaScript in the browser');
+        return;
+      }
+
+      const output = await runJavaScriptInWorker(codeInput);
+      setRunOutput(output || 'Code ran successfully with no console output.');
+      toast.success('JavaScript code ran');
+    } catch (error) {
+      setRunOutput(`Runtime error:\n${error.message}`);
+      toast.error('Run failed: ' + error.message);
+    } finally {
+      setRunLoading(false);
+    }
+  };
+
+  const copyText = async (text, label) => {
+    if (!text) {
+      toast.info(`Nothing to copy from ${label}`);
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`${label} copied`);
+    } catch {
+      toast.error('Copy failed');
+    }
   };
 
   const loadSession = async (sessionId) => {
     try {
       const response = await api.get(`/api/code/sessions/${sessionId}`);
       const session = response.data;
-      
-      setCodeInput(session.code_input);
-      setLanguage(session.language);
-      setDebugResponse(session.response);
+      const listSession = codeSessions.find((item) => item.id === sessionId);
+
+      setCodeInput(session.code_input || session.code || '');
+      setLanguage(session.language || listSession?.language || language);
+      setDebugResponse(session.response || '');
       setDebugResponseRoman(session.response_roman || '');
-      setSelectedSession(session);
+      setSelectedSession({
+        ...listSession,
+        ...session,
+        id: session.id || sessionId,
+        name: session.name || listSession?.name || 'Code session',
+        language: session.language || listSession?.language || language,
+      });
       setShowHistory(false);
-      
-      toast.success(`Loaded session: ${session.name}`);
+      toast.success(`Loaded: ${session.name || listSession?.name || 'Code session'}`);
     } catch (error) {
       toast.error('Failed to load session: ' + (error.response?.data?.detail || error.message));
     }
@@ -87,11 +268,10 @@ const CodeDebug = () => {
   const deleteSession = async (sessionId) => {
     try {
       await api.delete(`/api/code/sessions/${sessionId}`);
-      toast.success('Session deleted successfully');
-      loadCodeSessions();
-      
-      // Clear UI if deleted session was selected
-      if (selectedSession && selectedSession.id === sessionId) {
+      toast.success('Session deleted');
+      setCodeSessions((prev) => prev.filter((session) => session.id !== sessionId));
+
+      if (selectedSession?.id === sessionId) {
         clearCodeUI();
       }
     } catch (error) {
@@ -100,292 +280,379 @@ const CodeDebug = () => {
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return 'Unknown date';
     return formatDateTime(dateString);
   };
 
+  const currentResponse = showRoman ? debugResponseRoman : debugResponse;
+
   return (
-    <div className="h-screen flex flex-col bg-gray-900 text-white overflow-hidden">
-      {/* Header */}
-      <header className="flex-shrink-0 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white flex justify-between items-center shadow-sm">
-        <div>
-          <h1 className="text-base font-semibold">Code Debugger</h1>
-          <p className="text-xs opacity-80">Analyze and improve your code</p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => setShowHistory(!showHistory)}
-            className="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition-colors text-xs"
-          >
-            {showHistory ? 'Hide' : 'History'}
-          </button>
-          <button
-            onClick={clearCodeUI}
-            className="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition-colors text-xs"
-          >
-            Clear
-          </button>
+    <div className="h-full min-h-0 flex flex-col theme-surface theme-text rounded-lg theme-border border overflow-y-auto lg:overflow-hidden custom-scroll">
+      <header className="flex-shrink-0 border-b theme-border theme-surface px-4 py-3">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <MdTerminal className="text-blue-500" size={22} />
+              <h1 className="text-lg font-semibold">Code Debugger</h1>
+            </div>
+            <p className="text-xs theme-muted mt-1">Debug, explain, and improve code with AI assistance.</p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowHistory((current) => !current)}
+              className="inline-flex items-center gap-2 rounded-lg theme-surface-soft theme-border border px-3 py-2 text-sm font-medium hover:opacity-85"
+            >
+              <MdHistory size={17} />
+              {showHistory ? 'Hide History' : 'History'}
+            </button>
+            <button
+              type="button"
+              onClick={loadCodeSessions}
+              className="inline-flex items-center gap-2 rounded-lg theme-surface-soft theme-border border px-3 py-2 text-sm font-medium hover:opacity-85"
+            >
+              <MdRefresh className={historyLoading ? 'animate-spin' : ''} size={17} />
+              Refresh
+            </button>
+            <button
+              type="button"
+              onClick={clearCodeUI}
+              className="rounded-lg theme-surface-soft theme-border border px-3 py-2 text-sm font-medium hover:opacity-85"
+            >
+              Clear
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* Mobile History Overlay */}
       {showHistory && (
-        <div className="lg:hidden fixed inset-0 z-50 bg-gray-900 flex flex-col">
-          {/* Mobile History Header */}
-          <div className="flex-shrink-0 p-4 bg-gray-800 border-b border-gray-700 flex justify-between items-center">
-            <div>
-              <h3 className="text-lg font-semibold text-white">Code Sessions</h3>
-              <p className="text-sm text-gray-400">{codeSessions.length} sessions</p>
-            </div>
-            <button
-              onClick={() => setShowHistory(false)}
-              className="text-gray-400 hover:text-white transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          
-          {/* Mobile History Content - Scrollable */}
-          <div className="flex-1 overflow-y-auto custom-scroll mobile-scroll bg-gray-800 -webkit-overflow-scrolling-touch">
-            {codeSessions.length === 0 ? (
-              <div className="p-6 text-center text-gray-400">
-                <div className="text-4xl mb-3">📝</div>
-                <p className="text-lg mb-2">No code sessions yet</p>
-                <p className="text-sm">Start debugging to create your first session!</p>
-              </div>
-            ) : (
-              <div className="p-3 space-y-3 pb-6">
-                {codeSessions.map((session) => (
-                  <div
-                    key={session.id}
-                    className={`relative p-4 rounded-xl cursor-pointer transition-all duration-200 border-2 min-h-[120px] ${
-                      selectedSession?.id === session.id
-                        ? 'bg-blue-600 border-blue-500 text-white shadow-lg'
-                        : 'bg-gray-700 border-gray-600 hover:bg-gray-600 hover:border-gray-500'
-                    }`}
-                    onClick={() => loadSession(session.id)}
-                  >
-                    {/* Delete Button */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteSession(session.id);
-                      }}
-                      className="absolute top-2 right-2 p-2 rounded-full hover:bg-red-500 hover:text-white transition-colors text-red-400 hover:text-white z-10 min-h-[44px] min-w-[44px] flex items-center justify-center"
-                      title="Delete session"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                    
-                    {/* Session Content */}
-                    <div className="pr-12">
-                      <h4 className="font-semibold text-sm mb-2 truncate" title={session.name}>
-                        {session.name}
-                      </h4>
-                      
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="px-2 py-1 bg-gray-600 text-xs rounded-full">
-                          {session.language}
-                        </span>
-                        <span className="text-xs text-gray-400">
-                          {formatDate(session.created_at)}
-                        </span>
-                      </div>
-                      
-                      <p className="text-xs text-gray-300 line-clamp-3 break-words" title={session.code_preview}>
-                        {session.code_preview}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+        <div className="fixed inset-0 z-50 bg-black/45 backdrop-blur-sm lg:hidden">
+          <div className="h-full theme-surface theme-text flex flex-col">
+            <HistoryPanel
+              sessions={filteredSessions}
+              selectedSession={selectedSession}
+              historySearch={historySearch}
+              setHistorySearch={setHistorySearch}
+              historyLoading={historyLoading}
+              loadSession={loadSession}
+              deleteSession={deleteSession}
+              formatDate={formatDate}
+              onClose={() => setShowHistory(false)}
+            />
           </div>
         </div>
       )}
 
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* Desktop History Panel */}
+      <div className="flex flex-1 min-h-0 overflow-y-auto lg:overflow-hidden custom-scroll">
         {showHistory && (
-          <div className="hidden lg:block w-80 bg-gray-800 border-r border-gray-700 flex flex-col h-full max-h-full">
-            {/* Header - Fixed */}
-            <div className="flex-shrink-0 p-4 border-b border-gray-700 bg-gray-800">
-              <h3 className="text-lg font-semibold text-white">Code Sessions</h3>
-              <p className="text-sm text-gray-400">{codeSessions.length} sessions</p>
-            </div>
-            
-            {/* Scrollable Content - Takes remaining space */}
-            <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scroll bg-gray-800 min-h-0 desktop-history-scroll">
-              {codeSessions.length === 0 ? (
-                <div className="p-6 text-center text-gray-400">
-                  <div className="text-4xl mb-3">📝</div>
-                  <p className="text-lg mb-2">No code sessions yet</p>
-                  <p className="text-sm">Start debugging to create your first session!</p>
-                </div>
-              ) : (
-                <div className="p-3 space-y-3 pb-6">
-                  {codeSessions.map((session) => (
-                    <div
-                      key={session.id}
-                      className={`relative p-4 rounded-xl cursor-pointer transition-all duration-200 border-2 min-h-[120px] ${
-                        selectedSession?.id === session.id
-                          ? 'bg-blue-600 border-blue-500 text-white shadow-lg'
-                          : 'bg-gray-700 border-gray-600 hover:bg-gray-600 hover:border-gray-500'
-                      }`}
-                      onClick={() => loadSession(session.id)}
-                    >
-                      {/* Delete Button */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteSession(session.id);
-                        }}
-                        className="absolute top-2 right-2 p-2 rounded-full hover:bg-red-500 hover:text-white transition-colors text-red-400 hover:text-white z-10 min-h-[44px] min-w-[44px] flex items-center justify-center"
-                        title="Delete session"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                      
-                      {/* Session Content */}
-                      <div className="pr-12">
-                        <h4 className="font-semibold text-sm mb-2 truncate" title={session.name}>
-                          {session.name}
-                        </h4>
-                        
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="px-2 py-1 bg-gray-600 text-xs rounded-full">
-                            {session.language}
-                          </span>
-                          <span className="text-xs text-gray-400">
-                            {formatDate(session.created_at)}
-                          </span>
-                        </div>
-                        
-                        <p className="text-xs text-gray-300 line-clamp-3 break-words" title={session.code_preview}>
-                          {session.code_preview}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          <aside className="hidden lg:flex w-80 shrink-0 theme-surface-soft theme-border border-r min-h-0">
+            <HistoryPanel
+              sessions={filteredSessions}
+              selectedSession={selectedSession}
+              historySearch={historySearch}
+              setHistorySearch={setHistorySearch}
+              historyLoading={historyLoading}
+              loadSession={loadSession}
+              deleteSession={deleteSession}
+              formatDate={formatDate}
+            />
+          </aside>
         )}
 
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
-          {/* Editor Panel */}
-          <div className="w-full lg:w-1/2 p-3 lg:p-4 border-r border-gray-700 flex flex-col min-h-0">
-            <div className="mb-3 lg:mb-4 flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 flex-shrink-0">
-              <select 
-                value={language} 
-                onChange={(e) => setLanguage(e.target.value)} 
-                className="w-full sm:w-auto p-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none text-sm lg:text-base min-h-[44px]"
-              >
-                <option value="python">Python</option>
-                <option value="javascript">JavaScript</option>
-                <option value="java">Java</option>
-              </select>
-              
+        <main className="flex-1 grid grid-cols-1 lg:grid-cols-2 min-h-0 overflow-visible lg:overflow-hidden">
+          <section className="min-h-[620px] lg:min-h-0 flex flex-col theme-border border-r p-3 lg:p-4">
+            <div className="mb-3 flex flex-col gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <label className="text-xs font-semibold theme-muted">
+                  Language
+                  <select
+                    value={language}
+                    onChange={(event) => setLanguage(event.target.value)}
+                    className="mt-1 w-full rounded-lg theme-surface-soft theme-border border px-3 py-2 theme-text outline-none"
+                  >
+                    {languages.map((item) => (
+                      <option key={item.value} value={item.value}>{item.label}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <div>
+                  <p className="text-xs font-semibold theme-muted mb-1">Mode</p>
+                  <div className="grid grid-cols-3 gap-1 rounded-lg theme-surface-soft theme-border border p-1">
+                    {modes.map((mode) => {
+                      const Icon = mode.icon;
+                      const isActive = analysisMode === mode.id;
+                      return (
+                        <button
+                          type="button"
+                          key={mode.id}
+                          onClick={() => setAnalysisMode(mode.id)}
+                          className={`inline-flex items-center justify-center gap-1 rounded-md px-2 py-2 text-xs font-semibold ${
+                            isActive ? 'bg-blue-600 text-white' : 'hover:opacity-80'
+                          }`}
+                          title={mode.instruction}
+                        >
+                          <Icon size={15} />
+                          {mode.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
               {selectedSession && (
-                <div className="text-sm text-blue-400 truncate w-full sm:w-auto flex items-center min-h-[44px]">
+                <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-700 dark:text-blue-200">
                   Loaded: {selectedSession.name}
                 </div>
               )}
             </div>
 
-            <div className="flex-1 border border-gray-600 rounded-lg overflow-hidden min-h-[300px] lg:min-h-0">
+            <div className="flex-1 min-h-[320px] overflow-hidden rounded-lg theme-border border">
               <Editor
                 height="100%"
-                language={language}
+                language={language === 'cpp' ? 'cpp' : language}
                 value={codeInput}
-                onChange={setCodeInput}
+                onChange={(value) => setCodeInput(value || '')}
                 theme="vs-dark"
-                options={{ 
+                options={{
                   minimap: { enabled: false },
                   fontSize: 14,
                   lineNumbers: 'on',
                   wordWrap: 'on',
                   automaticLayout: true,
                   scrollBeyondLastLine: false,
-                  padding: { top: 15, bottom: 15 },
-                  scrollbar: {
-                    vertical: 'auto',
-                    horizontal: 'auto',
-                    verticalScrollbarSize: 12,
-                    horizontalScrollbarSize: 12
-                  }
+                  padding: { top: 14, bottom: 14 },
                 }}
               />
             </div>
 
-            <div className="mt-3 lg:mt-4 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 flex-shrink-0">
-              <button 
-                onClick={handleDebug} 
+            <div className="mt-3 grid grid-cols-2 lg:grid-cols-5 gap-2">
+              <button
+                type="button"
+                onClick={handleDebug}
                 disabled={responseLoading || !codeInput.trim()}
-                className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:from-gray-500 disabled:to-gray-600 p-3 rounded-lg text-white font-medium transition-all duration-200 flex items-center justify-center min-h-[48px]"
+                className="col-span-2 inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
               >
                 {responseLoading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Analyzing...
-                  </>
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                 ) : (
-                  'Debug Code'
+                  <MdPlayArrow size={18} />
                 )}
+                {responseLoading ? 'Analyzing...' : `${selectedMode.label} Code`}
               </button>
-              <button 
-                onClick={clearCodeUI} 
-                className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 p-3 rounded-lg text-white font-medium transition-all duration-200 min-h-[48px] px-6"
+              <button
+                type="button"
+                onClick={handleRunCode}
+                disabled={runLoading || !codeInput.trim()}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-3 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
               >
-                Clear
+                {runLoading ? (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                ) : (
+                  <MdPlayArrow size={18} />
+                )}
+                Run
+              </button>
+              <button
+                type="button"
+                onClick={loadSample}
+                className="rounded-lg theme-surface-soft theme-border border px-3 py-3 text-sm font-semibold hover:opacity-85"
+              >
+                Sample
+              </button>
+              <button
+                type="button"
+                onClick={() => copyText(codeInput, 'Code')}
+                className="inline-flex items-center justify-center gap-2 rounded-lg theme-surface-soft theme-border border px-3 py-3 text-sm font-semibold hover:opacity-85"
+              >
+                <MdContentCopy size={16} />
+                Copy
               </button>
             </div>
-          </div>
+          </section>
 
-          {/* Response Panel */}
-          <div className="w-full lg:w-1/2 p-3 lg:p-4 flex flex-col min-h-0">
-            <div className="mb-3 lg:mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 flex-shrink-0">
-              <h3 className="text-base lg:text-lg font-semibold text-white">Analysis & Explanation</h3>
-              <div className="flex items-center space-x-2">
-                <span className="text-xs text-gray-400">Language:</span>
+          <section className="min-h-[520px] lg:min-h-0 flex flex-col p-3 lg:p-4">
+            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="text-base font-semibold">Analysis & Explanation</h3>
+                <p className="text-xs theme-muted">Review fixes, causes, and improved code.</p>
+              </div>
+              <div className="flex items-center gap-2">
                 <button
+                  type="button"
                   onClick={() => setShowRoman(false)}
-                  className={`px-3 py-2 rounded text-xs min-h-[44px] min-w-[44px] flex items-center justify-center ${!showRoman ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200'}`}
-                >English</button>
+                  className={`rounded-lg px-3 py-2 text-xs font-semibold ${!showRoman ? 'bg-blue-600 text-white' : 'theme-surface-soft theme-border border'}`}
+                >
+                  English
+                </button>
                 <button
+                  type="button"
                   onClick={() => setShowRoman(true)}
-                  className={`px-3 py-2 rounded text-xs min-h-[44px] min-w-[44px] flex items-center justify-center ${showRoman ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200'}`}
-                >Roman Urdu</button>
+                  disabled={!debugResponseRoman}
+                  className={`rounded-lg px-3 py-2 text-xs font-semibold ${showRoman ? 'bg-blue-600 text-white' : 'theme-surface-soft theme-border border'} disabled:opacity-50`}
+                >
+                  Roman Urdu
+                </button>
+                <button
+                  type="button"
+                  onClick={() => copyText(currentResponse, 'Analysis')}
+                  className="rounded-lg theme-surface-soft theme-border border p-2 hover:opacity-85"
+                  title="Copy analysis"
+                >
+                  <MdContentCopy size={16} />
+                </button>
               </div>
             </div>
-            
-            <div className="flex-1 bg-gray-800 rounded-lg p-4 overflow-y-auto custom-scroll mobile-scroll min-h-[300px] lg:min-h-0">
-              {(showRoman ? debugResponseRoman : debugResponse) ? (
-                <div className="text-gray-100">
-                  <MessageRenderer content={showRoman ? debugResponseRoman : debugResponse} />
+
+            <div className="flex-1 min-h-[320px] overflow-y-auto custom-scroll rounded-lg theme-surface-soft theme-border border p-4">
+              {runOutput && (
+                <div className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-200">Run Output</p>
+                    <button
+                      type="button"
+                      onClick={() => copyText(runOutput, 'Run output')}
+                      className="rounded-md p-1 hover:opacity-80"
+                      title="Copy run output"
+                    >
+                      <MdContentCopy size={15} />
+                    </button>
+                  </div>
+                  <pre className="whitespace-pre-wrap break-words text-sm theme-text">{runOutput}</pre>
+                </div>
+              )}
+
+              {responseLoading ? (
+                <div className="flex h-full items-center justify-center text-center theme-muted">
+                  <div>
+                    <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
+                    <p className="mt-4 font-semibold">Analyzing your code</p>
+                    <p className="mt-1 text-sm">The response will appear here.</p>
+                  </div>
+                </div>
+              ) : currentResponse ? (
+                <div className="theme-text">
+                  <MessageRenderer content={currentResponse} />
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-full text-gray-400">
-                  <div className="text-center">
-                    <div className="text-4xl mb-2">🔍</div>
-                    <p className="text-lg">Ready to analyze your code</p>
-                    <p className="text-sm">Enter your code and click "Debug Code" to get started</p>
+                <div className="flex h-full items-center justify-center text-center theme-muted">
+                  <div>
+                    <MdSearch className="mx-auto mb-3 h-12 w-12 opacity-70" />
+                    <p className="text-lg font-semibold">Ready to analyze</p>
+                    <p className="mt-1 text-sm">Paste code, choose a mode, and run the debugger.</p>
                   </div>
                 </div>
               )}
             </div>
-          </div>
-        </div>
+          </section>
+        </main>
       </div>
     </div>
   );
 };
+
+const HistoryPanel = ({
+  sessions,
+  selectedSession,
+  historySearch,
+  setHistorySearch,
+  historyLoading,
+  loadSession,
+  deleteSession,
+  formatDate,
+  onClose,
+}) => (
+  <div className="flex h-full w-full flex-col min-h-0">
+    <div className="border-b theme-border p-3">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <h3 className="font-semibold">Code Sessions</h3>
+          <p className="text-xs theme-muted">{sessions.length} shown</p>
+        </div>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg theme-surface-soft theme-border border p-2"
+            aria-label="Close history"
+          >
+            <MdClose size={18} />
+          </button>
+        )}
+      </div>
+
+      <label className="mt-3 flex items-center gap-2 rounded-lg theme-surface theme-border border px-3 py-2">
+        <MdSearch size={16} className="theme-muted" />
+        <input
+          value={historySearch}
+          onChange={(event) => setHistorySearch(event.target.value)}
+          placeholder="Search code sessions"
+          className="w-full bg-transparent text-sm outline-none"
+        />
+      </label>
+    </div>
+
+    <div className="flex-1 min-h-0 overflow-y-auto custom-scroll p-3 space-y-2">
+      {historyLoading ? (
+        <div className="py-8 text-center theme-muted">Loading history...</div>
+      ) : sessions.length === 0 ? (
+        <div className="py-8 text-center theme-muted">
+          <MdHistory className="mx-auto mb-3 h-10 w-10 opacity-70" />
+          <p className="font-semibold">No sessions found</p>
+          <p className="text-sm">Run a code analysis to create one.</p>
+        </div>
+      ) : (
+        sessions.map((session) => (
+          <div
+            role="button"
+            tabIndex={0}
+            key={session.id}
+            onClick={() => loadSession(session.id)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                loadSession(session.id);
+              }
+            }}
+            className={`group w-full rounded-lg border p-3 text-left transition ${
+              selectedSession?.id === session.id
+                ? 'border-blue-500 bg-blue-600 text-white'
+                : 'theme-surface theme-border hover:opacity-90'
+            }`}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold">{session.name || 'Code session'}</p>
+                <p className={`mt-1 text-xs ${selectedSession?.id === session.id ? 'text-blue-100' : 'theme-muted'}`}>
+                  {session.language || 'code'} - {formatDate(session.created_at)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  deleteSession(session.id);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    deleteSession(session.id);
+                  }
+                }}
+                className="rounded-lg p-2 text-rose-500 opacity-100 hover:bg-rose-500 hover:text-white lg:opacity-0 lg:group-hover:opacity-100"
+                title="Delete session"
+              >
+                <MdDelete size={17} />
+              </button>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  </div>
+);
 
 export default CodeDebug;
