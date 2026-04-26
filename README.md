@@ -56,7 +56,8 @@ Windows PowerShell:
 cd backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
 macOS/Linux:
@@ -65,7 +66,19 @@ macOS/Linux:
 cd backend
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+If you see on Windows: `Fatal error in launcher: Unable to create process ...`, your old `.venv` likely points to a moved folder.
+
+```powershell
+cd backend
+deactivate 2>$null
+Remove-Item -Recurse -Force .venv
+py -3 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
 Create `backend/.env`:

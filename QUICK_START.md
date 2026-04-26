@@ -99,7 +99,7 @@ npm run dev
 rm -rf backend/.pytest_cache frontend/.vite
 
 # Reinstall dependencies
-pip install -r backend/requirements.txt --force-reinstall
+python -m pip install -r backend/requirements.txt --force-reinstall
 cd frontend && npm install --force
 ```
 
