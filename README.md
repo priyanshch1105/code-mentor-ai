@@ -1,56 +1,125 @@
 # Code Mentor AI
 
-Production-grade AI-powered learning platform with intelligent code mentoring, quiz systems, and personalized recommendations.
+Production-grade AI-powered learning platform for intelligent code mentoring, real-time debugging, adaptive quizzes, and personalized learning recommendations.
+
+Built as a **College Minor Project**, this platform combines AI-powered tutoring with modern full-stack architecture to create an interactive and scalable educational system for students, developers, and educators. 
 
 ![Status](https://img.shields.io/badge/status-production-green)
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-## 📋 Quick Links
+---
 
-- 📚 [Architecture](./ARCHITECTURE.md) - System design & folder structure
-- 🚀 [Setup Guide](./docs/SETUP.md) - Development environment
-- 📖 [API Documentation](./docs/API.md) - API endpoints & examples
-- 🤝 [Contributing](./docs/CONTRIBUTING.md) - Development guidelines
+# 📌 Project Overview
 
-## 🎯 Core Features
+Code Mentor AI is an advanced AI-powered tutoring platform designed to improve learning efficiency through intelligent academic support, code debugging assistance, quiz generation, and personalized study recommendations.
 
-- **Intelligent Tutoring Chat** - Subject-aware AI assistant
-- **Code Debugging** - Real-time code analysis & fixes
-- **Quiz System** - Adaptive question generation
-- **Progress Dashboard** - Learning analytics
-- **Learning Recommendations** - AI-powered next steps
-- **Session Management** - Chat history & persistence
+The platform provides:
 
-## 🛠 Tech Stack
+* AI-powered tutoring and doubt solving
+* Real-time code debugging and optimization
+* Adaptive quiz generation and analysis
+* Progress tracking and learning analytics
+* Personalized recommendations
+* Session history and persistence
+* Scalable production-ready architecture
 
-| Component | Technology |
-|-----------|-----------|
-| **Backend** | FastAPI, SQLAlchemy, PostgreSQL, JWT |
-| **Frontend** | React 18, Vite, Tailwind CSS, Recharts |
-| **AI** | Groq API, LLM Integration |
-| **DevOps** | Docker, Docker Compose, GitHub Actions |
-| **Testing** | Pytest, Vitest, Coverage |
+This project bridges the gap between traditional education and modern AI-assisted learning systems by offering students a 24/7 intelligent tutor and helping educators monitor learning progress effectively.
 
-## 📦 Prerequisites
+---
 
-- Python 3.10+ 
-- Node.js 18+
-- PostgreSQL 13+
-- Docker & Docker Compose (optional)
+# 🚀 Core Features
 
-## 🚀 Quick Start
+## 🤖 AI Tutoring System
 
-### 1) Clone and enter project
+* Subject-aware intelligent tutoring assistant
+* Context-based doubt solving
+* Personalized learning responses
+* Multi-subject support
+* Session continuity and history
+
+---
+
+## 💻 Code Debugging System
+
+* Real-time code analysis
+* Bug detection and resolution
+* Optimization suggestions
+* Code explanation support
+* AI-assisted debugging sessions
+
+---
+
+## 📝 Adaptive Quiz System
+
+* AI-generated quizzes
+* Personalized question recommendations
+* Quiz attempt history
+* Performance tracking
+* Analytics and improvement suggestions
+
+---
+
+## 📊 Progress Dashboard
+
+* Learning analytics
+* Subject-wise progress tracking
+* Performance monitoring
+* Session management
+* Student improvement insights
+
+---
+
+## 🎯 Smart Recommendations
+
+* AI-powered next-step suggestions
+* Personalized study plans
+* Weak-area detection
+* Smart learning paths
+* Improvement strategies
+
+---
+
+# 🛠️ Tech Stack
+
+| Layer          | Technology                                        |
+| -------------- | ------------------------------------------------- |
+| Frontend       | React React 18, Vite Vite, Tailwind CSS, Recharts |
+| Backend        | FastAPI FastAPI, SQLAlchemy, JWT                  |
+| Database       | PostgreSQL PostgreSQL                             |
+| AI Integration | Groq Groq API, LLM Integration                    |
+| DevOps         | Docker, Docker Compose, GitHub Actions            |
+| Testing        | Pytest, Vitest                                    |
+
+---
+
+# 📦 Prerequisites
+
+Before starting, make sure you have:
+
+* Python 3.10+
+* Node.js 18+
+* PostgreSQL 13+
+* Docker & Docker Compose (Optional)
+
+---
+
+# ⚙️ Installation Guide
+
+---
+
+## 1. Clone Repository
 
 ```bash
-git clone <your-repo-url>
+git clone <your-repository-url>
 cd code-tutor
 ```
 
-### 2) Backend setup
+---
 
-Windows PowerShell:
+## 2. Backend Setup
+
+### Windows (PowerShell)
 
 ```powershell
 cd backend
@@ -60,7 +129,7 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-macOS/Linux:
+### macOS / Linux
 
 ```bash
 cd backend
@@ -70,36 +139,45 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-If you see on Windows: `Fatal error in launcher: Unable to create process ...`, your old `.venv` likely points to a moved folder.
+---
 
-```powershell
-cd backend
-deactivate 2>$null
-Remove-Item -Recurse -Force .venv
-py -3 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-```
+## 3. Environment Variables
 
-Create `backend/.env`:
+Create a file named `backend/.env`
 
 ```env
 ENV=development
 DEBUG=true
-DATABASE_URL=postgresql://postgres:2005@localhost:5432/aitutor
+DATABASE_URL=postgresql://postgres:yourpassword@localhost:5432/aitutor
 SECRET_KEY=replace-with-a-long-random-string
 GROQ_API_KEY=your-groq-api-key
 ```
 
-Start backend:
+---
+
+## 4. Run Backend Server
 
 ```bash
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 3) Frontend setup
+Backend URL:
 
-In another terminal:
+```bash
+http://localhost:8000
+```
+
+API Documentation:
+
+```bash
+http://localhost:8000/api/docs
+```
+
+---
+
+## 5. Frontend Setup
+
+Open another terminal:
 
 ```bash
 cd frontend
@@ -107,183 +185,162 @@ npm install
 npm run dev
 ```
 
-Optional `frontend/.env`:
+Optional frontend `.env`
 
 ```env
 VITE_API_URL=http://localhost:8000
 ```
 
-### 4) Open app
-
-- Frontend: `http://localhost:5173`
-- Backend API root: `http://localhost:8000`
-- Swagger docs: `http://localhost:8000/api/docs`
-- Health check: `http://localhost:8000/health`
-
-## API Overview
-
-Main route groups are mounted under `/api`:
-
-- `/api/auth` authentication and subject selection
-- `/api/qa` question answering
-- `/api/debug` code debugging
-- `/api/recommend` recommendations
-- `/api/sessions` learning sessions
-- `/api/quiz` quiz lifecycle and analytics
-
-## Database Notes
-
-- The app creates tables at startup via SQLAlchemy metadata.
-- Lightweight schema checks/migrations run in `backend/main.py` for a few columns.
-- Ensure `DATABASE_URL` points to a reachable PostgreSQL database before starting.
-
-## Useful Commands
-
-From repo root:
+Frontend URL:
 
 ```bash
-# Backend tests (if configured for your environment)
-pytest backend
-
-# Frontend lint
-cd frontend && npm run lint
-
-# Script examples
-python scripts/migrate_database.py
-python scripts/migrate_quiz_database.py
-python scripts/performance_test.py
+http://localhost:5173
 ```
-
-## Deployment
-
-- A Render blueprint is provided in `render.yaml`.
-- Backend deploys from `backend/Dockerfile`.
-- Frontend builds with Vite and publishes `frontend/dist`.
-
-## Notes
-
-- If startup fails with missing environment variables, verify `backend/.env` values.
-- If CORS issues appear in local development, check allowed origins in `backend/config.py`.
-- `GET /api/auth/me` - User profile
-- `POST /api/auth/select-subject` - Subject selection
-
-### Q&A System
-- `POST /api/qa` - Ask questions to AI tutor
-- `GET /api/sessions/list` - Get user sessions
-- `POST /api/sessions/create` - Create new session
-- `POST /api/sessions/add-message` - Add message to session
-
-### Code Debugging
-- `POST /api/code-debug` - Debug code with AI
-- `GET /api/code-sessions` - Get code debugging history
-
-### Recommendations
-- `GET /api/recommend/` - Get AI recommendations
-- `GET /api/recommend/progress` - Get progress data
-
-### Quiz System
-- `POST /api/quiz/create` - Create AI-generated quiz
-- `GET /api/quiz/{id}/questions` - Get quiz questions
-- `POST /api/quiz/submit` - Submit quiz answers
-- `GET /api/quiz/history` - Get quiz attempt history
-- `GET /api/quiz/recommendations` - Get quiz recommendations
-
-## 🎨 Frontend Components
-
-### Core Components
-1. **App.jsx**: Main application container with routing
-2. **Login.jsx**: Authentication interface
-3. **Sidebar.jsx**: Navigation with recommendations
-4. **ChatHistory.jsx**: Message display with enhanced formatting
-5. **MessageRenderer.jsx**: Markdown rendering with syntax highlighting
-6. **UserMessage.jsx**: User message with edit/copy features
-7. **AssistantMessage.jsx**: AI message with formatted responses and TTS
-8. **MessageBar.jsx**: Input interface with voice support
-9. **VoiceInput.jsx**: Speech-to-text for voice questions
-10. **TextToSpeech.jsx**: Read AI responses aloud
-11. **CodeDebug.jsx**: Code editor with AI analysis
-12. **ProgressDashboard.jsx**: Analytics and progress visualization
-13. **SubjectSelector.jsx**: Subject selection modal
-14. **HistoryPanel.jsx**: Session history management
-15. **RecommendationsWidget.jsx**: AI learning suggestions
-
-### Quiz System Components
-11. **QuizSystem.jsx**: Main quiz interface with AI recommendations
-12. **QuizHistory.jsx**: Quiz attempt history with stats
-13. **QuizAnalytics.jsx**: Advanced analytics with charts
-
-### Utility Components
-14. **ToastProvider.jsx**: Notification system
-15. **API Service**: Centralized API communication
-
-## 🚀 Production Deployment
-
-### Prerequisites
-- Python 3.12+
-- Node.js 18+
-- PostgreSQL 13+
-- Google Gemini API Key
-- 16GB RAM (recommended)
-
-### Deployment Steps
-1. **Environment Setup**: Configure production environment variables
-2. **Database Migration**: Run migration scripts
-3. **Backend Deployment**: Deploy FastAPI application
-4. **Frontend Build**: Build React application for production
-5. **Static Files**: Serve frontend build files
-6. **SSL Configuration**: Configure HTTPS for production
-
-## 📈 Performance Metrics
-
-- **AI Response Time**: <2 seconds average
-- **Memory Usage**: Optimized for 16GB RAM systems with React.memo caching
-- **Database Performance**: Optimized queries with indexing
-- **Frontend Load Time**: <2 seconds initial load (code-split into 6 chunks)
-- **API Response Time**: <500ms average
-- **Scroll Performance**: 60 FPS with throttled event handlers
-- **Bundle Size**: 1,009 KB → Code-split (React: 16KB, Markdown: 74KB, Charts: 102KB gzipped)
-- **UI Responsiveness**: Optimized with hardware acceleration and React.memo
-
-## 🔒 Security Features
-
-- **JWT Authentication**: Secure token-based authentication
-- **Input Validation**: Pydantic model validation
-- **SQL Injection Prevention**: SQLAlchemy ORM protection
-- **CORS Configuration**: Secure cross-origin requests
-- **Error Handling**: Comprehensive error management
-
-## 🎯 Success Criteria
-
-### ✅ Primary Objectives (100% Achieved)
-- **AI Tutor System**: 70-80% accuracy with multi-subject support
-- **Personalized Learning**: Progress tracking and AI recommendations
-- **Educational Content**: Subject datasets and code debugging
-- **Technical Excellence**: Modern architecture with best practices
-
-### ✅ Quality Metrics
-- **Code Quality**: Professional-grade implementation
-- **User Experience**: Intuitive and responsive interface
-- **Performance**: Production-optimized
-- **Security**: Robust authentication and validation
-- **Scalability**: Future growth ready
-
-## 🎉 Project Status
-
-**✅ PROJECT COMPLETED & PRODUCTION READY**
-
-The AI Tutor Platform is a complete, production-ready educational system that successfully delivers:
-
-- **Technical Excellence**: Modern architecture with best practices
-- **Feature Completeness**: All planned features implemented and tested
-- **User Experience**: Intuitive, responsive, and engaging interface
-- **AI Integration**: Advanced Gemini AI integration with intelligent features
-- **Scalability**: Architecture supports future growth and enhancements
-
-**The project is ready for production deployment and real-world usage.**
 
 ---
 
-## 📞 Support
+# 📡 API Modules
 
-For technical support or questions about the AI Tutor Platform, please refer to the API documentation at `http://localhost:8000/docs` or contact the development team.
+## Authentication
 
+* User Registration & Login
+* JWT Authentication
+* Profile Management
+* Subject Selection
+
+---
+
+## Q&A System
+
+* Ask questions to AI tutor
+* Session creation
+* Message persistence
+* Chat history management
+
+---
+
+## Code Debugging
+
+* AI-based code debugging
+* Code session history
+* Error explanation and fixes
+
+---
+
+## Quiz System
+
+* Quiz creation
+* Question generation
+* Quiz submission
+* Attempt history
+* Quiz recommendations
+
+---
+
+## Recommendations
+
+* Personalized learning suggestions
+* Progress analytics
+* Smart study planning
+
+---
+
+# 🗄️ Database Notes
+
+* Tables are created automatically using SQLAlchemy metadata
+* Lightweight schema checks run during startup
+* PostgreSQL must be active before launching the backend
+
+---
+
+# 🚀 Deployment
+
+Production deployment includes:
+
+1. Environment configuration
+2. Database migration
+3. Backend deployment using Docker
+4. Frontend production build
+5. Static file hosting
+6. HTTPS & SSL configuration
+
+Deployment blueprint available using `render.yaml`.
+
+---
+
+# 📈 Performance Metrics
+
+* AI Response Time: < 2 seconds
+* API Response Time: < 500ms average
+* Frontend Initial Load: < 2 seconds
+* Scroll Performance: 60 FPS
+* Optimized Bundle Size with Code Splitting
+* Database Query Optimization with Indexing
+
+---
+
+# 🔒 Security Features
+
+* JWT-based Authentication
+* Secure Password Handling
+* Input Validation using Pydantic
+* SQL Injection Prevention
+* Secure CORS Configuration
+* Error Handling and Exception Management
+
+---
+
+# 🎯 Project Objectives
+
+* Improve learning efficiency
+* Provide 24/7 AI-powered academic support
+* Enable intelligent code mentoring
+* Deliver adaptive quiz-based learning
+* Build scalable educational infrastructure
+* Create a production-ready AI learning platform
+
+---
+
+# 🎉 Project Status
+
+## ✅ PROJECT COMPLETED & PRODUCTION READY
+
+This project successfully delivers:
+
+* Full AI tutoring workflow
+* Real-time debugging support
+* Adaptive quiz system
+* Learning analytics dashboard
+* Production-grade architecture
+* Scalable future-ready system
+
+The platform is ready for real-world deployment and usage.
+
+---
+
+# 👨‍💻 Developed By
+
+**Priyansh Chaurasiya**
+B.Tech CSE (Data Science)
+College Minor Project
+
+Machine Learning Engineer | Full Stack AI Developer
+
+---
+
+# 📞 Support
+
+For technical support or project-related queries:
+
+API Documentation:
+`http://localhost:8000/api/docs`
+
+Or contact the development team.
+
+---
+
+# 📜 License
+
+This project is developed for academic and educational purposes as a **College Minor Project**.
+
+Free to use for learning, research, and educational purposes.
