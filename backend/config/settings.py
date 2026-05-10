@@ -21,8 +21,7 @@ class Settings(BaseSettings):
     
     # Database
     database_url: str = os.getenv(
-        "DATABASE_URL", 
-        "postgresql://postgres:2005@localhost/aitutor"
+        "DATABASE_URL"
     )
     
     # JWT
@@ -36,7 +35,7 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: list = os.getenv(
         "CORS_ORIGINS", 
-        "http://localhost:5173,http://localhost:3000"
+        "http://localhost:5173,https://code-mentor-ai-beta.vercel.app"
     ).split(",")
     
     # AI Service

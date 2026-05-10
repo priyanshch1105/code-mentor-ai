@@ -4,7 +4,7 @@ import Cookies from 'js-cookie';
 
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'https://ai-tutor-y9a9.onrender.com',
+  baseURL: import.meta.env.VITE_API_URL || 'https://code-mentor-ai-w3ah.onrender.com',
   timeout: 15000,
 });
 api.interceptors.request.use(config => {
