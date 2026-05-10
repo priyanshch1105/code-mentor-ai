@@ -259,12 +259,30 @@ Production deployment includes:
 
 1. Environment configuration
 2. Database migration
-3. Backend deployment using Docker
+3. Backend deployment using Docker or native Python runtime
 4. Frontend production build
 5. Static file hosting
 6. HTTPS & SSL configuration
 
-Deployment blueprint available using `render.yaml`.
+## Render (Important)
+
+If Render start command is left empty for a Python service, it defaults to `gunicorn your_application.wsgi`, which does not exist in this project.
+
+Use this start command for backend deployments on native Python runtime:
+
+```bash
+cd backend && gunicorn main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
+```
+
+Build command:
+
+```bash
+pip install -r backend/requirements.txt
+```
+
+This repository also includes a root `Procfile` with the same web command, so new Render services can pick up the correct startup automatically.
+
+Deployment blueprint is available using `render.yaml` (Docker backend + static frontend).
 
 ---
 
