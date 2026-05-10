@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../controllers/chat_controller.dart';
 import '../../controllers/code_debug_controller.dart';
 import '../widgets/section_card.dart';
 
@@ -17,12 +18,66 @@ class _CodeDebugScreenState extends State<CodeDebugScreen> {
   String _mode = 'debug';
   String _language = 'python';
   bool _loading = false;
+  bool _historyLoading = true;
   String? _analysis;
+  List<Map<String, dynamic>> _sessions = [];
+  int? _selectedSessionId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
 
   @override
   void dispose() {
     _codeController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadHistory() async {
+    try {
+      final sessions = await ChatController.instance.getCodeSessions();
+      if (!mounted) return;
+      setState(() {
+        _sessions = sessions;
+        _historyLoading = false;
+      });
+      if (sessions.isNotEmpty) {
+        await _loadSession(sessions.first['id'] as int?);
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _historyLoading = false);
+    }
+  }
+
+  Future<void> _loadSession(int? sessionId) async {
+    if (sessionId == null) return;
+
+    setState(() {
+      _selectedSessionId = sessionId;
+      _loading = true;
+    });
+
+    try {
+      final session = await ChatController.instance.getCodeSession(sessionId);
+      if (!mounted) return;
+      setState(() {
+        _codeController.text = session['code_input']?.toString() ?? session['code']?.toString() ?? _codeController.text;
+        _analysis = session['response']?.toString();
+        _language = session['language']?.toString() ?? _language;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('History load failed: ${error.toString()}')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
+    }
   }
 
   Future<void> _analyze() async {
@@ -38,7 +93,11 @@ class _CodeDebugScreenState extends State<CodeDebugScreen> {
       );
 
       if (!mounted) return;
-      setState(() => _analysis = result.response);
+      setState(() {
+        _analysis = result.response;
+        _selectedSessionId = result.sessionId;
+      });
+      await _loadHistory();
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -58,6 +117,35 @@ class _CodeDebugScreenState extends State<CodeDebugScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        if (_historyLoading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (_sessions.isNotEmpty) ...[
+          Text(
+            'Recent Analyses',
+            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 42,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _sessions.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final session = _sessions[index];
+                return ChoiceChip(
+                  label: Text(session['name']?.toString() ?? 'Session'),
+                  selected: _selectedSessionId == session['id'],
+                  onSelected: (_) => _loadSession(session['id'] as int?),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -158,7 +246,7 @@ class _CodeDebugScreenState extends State<CodeDebugScreen> {
                   ),
                   const SizedBox(width: 8),
                   OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: _sessions.isEmpty ? null : () => _loadSession(_sessions.first['id'] as int?),
                     icon: const Icon(Icons.history),
                     label: const Text('History'),
                   ),

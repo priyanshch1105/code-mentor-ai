@@ -1,20 +1,109 @@
 import 'package:flutter/material.dart';
+
+import '../../controllers/auth_controller.dart';
+import '../../controllers/chat_controller.dart';
 import '../utils/theme_utils.dart';
 
-class LearningPathScreen extends StatelessWidget {
+class LearningPathScreen extends StatefulWidget {
   const LearningPathScreen({super.key});
+
+  @override
+  State<LearningPathScreen> createState() => _LearningPathScreenState();
+}
+
+class _LearningPathScreenState extends State<LearningPathScreen> {
+  bool _loading = true;
+  String _subject = 'general';
+  Map<String, dynamic> _progress = {};
+  String _recommendation = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    try {
+      final profile = await AuthController.instance.loadCurrentUser();
+      final progressResponse = await ChatController.instance.getProgress();
+      final recommendation = await ChatController.instance.getRecommendation(subject: profile.currentSubject);
+      if (!mounted) return;
+      setState(() {
+        _subject = profile.currentSubject;
+        _progress = Map<String, dynamic>.from(progressResponse['progress'] is Map ? progressResponse['progress'] as Map : {});
+        _recommendation = recommendation;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _setSubject(String subject) async {
+    try {
+      await AuthController.instance.selectSubject(subject);
+      final profile = await AuthController.instance.loadCurrentUser();
+      final recommendation = await ChatController.instance.getRecommendation(subject: profile.currentSubject);
+      if (!mounted) return;
+      setState(() {
+        _subject = profile.currentSubject;
+        _recommendation = recommendation;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Subject update failed: ${error.toString()}')),
+      );
+    }
+  }
+
+  List<_PathStepData> _stepsForSubject() {
+    switch (_subject) {
+      case 'math':
+        return const [
+          _PathStepData('Core formulas and notation', 0.85, 'Warm up complete'),
+          _PathStepData('Problem solving patterns', 0.6, '2 sessions left'),
+          _PathStepData('Timed practice set', 0.3, 'Start next'),
+        ];
+      case 'physics':
+        return const [
+          _PathStepData('Conceptual foundations', 0.8, 'Warm up complete'),
+          _PathStepData('Numerical problem practice', 0.5, '3 sessions left'),
+          _PathStepData('Exam-style mixed drills', 0.2, 'Start next'),
+        ];
+      case 'ielts':
+        return const [
+          _PathStepData('Vocabulary and grammar', 0.75, 'Warm up complete'),
+          _PathStepData('Reading and listening drills', 0.55, '2 sessions left'),
+          _PathStepData('Mock test review', 0.25, 'Start next'),
+        ];
+      case 'coding':
+      default:
+        return const [
+          _PathStepData('Arrays and two pointers', 0.9, 'Warm up complete'),
+          _PathStepData('Binary search patterns', 0.6, '2 sessions left'),
+          _PathStepData('Recursion and DP basics', 0.25, 'Start next'),
+        ];
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = ThemeUtils.getColors(context);
 
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return SafeArea(
       child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -28,8 +117,36 @@ class LearningPathScreen extends StatelessWidget {
                   Text(
                     'Your personalized roadmap for this week',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                      color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
                     ),
+                  ),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ChoiceChip(label: const Text('Coding'), selected: _subject == 'coding', onSelected: (_) => _setSubject('coding')),
+                      ChoiceChip(label: const Text('Math'), selected: _subject == 'math', onSelected: (_) => _setSubject('math')),
+                      ChoiceChip(label: const Text('Physics'), selected: _subject == 'physics', onSelected: (_) => _setSubject('physics')),
+                      ChoiceChip(label: const Text('IELTS'), selected: _subject == 'ielts', onSelected: (_) => _setSubject('ielts')),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(18),
+                      color: colors.primary.withValues(alpha: 0.08),
+                    ),
+                    child: Text(
+                      _recommendation.isEmpty ? 'Your next best step will appear here.' : _recommendation,
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${_progress.length} subjects are tracked in your profile',
+                    style: theme.textTheme.bodySmall,
                   ),
                 ],
               ),
@@ -38,46 +155,39 @@ class LearningPathScreen extends StatelessWidget {
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                _PathStep(
-                  title: 'Arrays & Two Pointers',
-                  progress: 0.9,
-                  eta: 'Done',
-                  color: colors.success,
-                  index: 1,
-                ),
-                const SizedBox(height: 12),
-                _PathStep(
-                  title: 'Binary Search Patterns',
-                  progress: 0.6,
-                  eta: '2 sessions left',
-                  color: colors.primary,
-                  index: 2,
-                ),
-                const SizedBox(height: 12),
-                _PathStep(
-                  title: 'Recursion Deep Dive',
-                  progress: 0.35,
-                  eta: '4 sessions left',
-                  color: colors.secondary,
-                  index: 3,
-                ),
-                const SizedBox(height: 12),
-                _PathStep(
-                  title: 'Dynamic Programming Intro',
-                  progress: 0.1,
-                  eta: 'Starts next',
-                  color: colors.warning,
-                  index: 4,
-                ),
-                const SizedBox(height: 20),
-              ]),
+              delegate: SliverChildListDelegate(
+                [
+                  ..._stepsForSubject().asMap().entries.expand((entry) {
+                    final index = entry.key;
+                    final step = entry.value;
+                    return [
+                      _PathStep(
+                        title: step.title,
+                        progress: step.progress,
+                        eta: step.eta,
+                        color: index.isEven ? colors.primary : colors.success,
+                        index: index + 1,
+                      ),
+                      const SizedBox(height: 12),
+                    ];
+                  }),
+                  const SizedBox(height: 20),
+                ],
+              ),
             ),
           ),
         ],
       ),
     );
   }
+}
+
+class _PathStepData {
+  const _PathStepData(this.title, this.progress, this.eta);
+
+  final String title;
+  final double progress;
+  final String eta;
 }
 
 class _PathStep extends StatelessWidget {
@@ -107,7 +217,7 @@ class _PathStep extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: theme.colorScheme.surfaceVariant,
+            color: theme.colorScheme.surfaceContainerHighest,
             width: 0.5,
           ),
         ),
@@ -121,7 +231,7 @@ class _PathStep extends StatelessWidget {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.15),
+                    color: color.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Center(
@@ -163,7 +273,7 @@ class _PathStep extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: progress,
                 minHeight: 8,
-                backgroundColor: color.withOpacity(0.1),
+                backgroundColor: color.withValues(alpha: 0.1),
                 valueColor: AlwaysStoppedAnimation<Color>(color),
               ),
             ),

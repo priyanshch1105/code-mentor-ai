@@ -1,17 +1,82 @@
 import 'package:flutter/material.dart';
 
+import '../../controllers/auth_controller.dart';
+import '../../controllers/chat_controller.dart';
+import '../../models/response/session_summary.dart';
 import '../utils/theme_utils.dart';
 import '../widgets/feature_card.dart';
 import '../widgets/session_tile.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  bool _loading = true;
+  String _username = 'Learner';
+  String _subject = 'general';
+  Map<String, dynamic> _progress = {};
+  String _recommendation = '';
+  List<SessionSummary> _sessions = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    try {
+      final profile = await AuthController.instance.loadCurrentUser();
+      final sessions = await ChatController.instance.getSessions();
+      final progress = await ChatController.instance.getProgress();
+      final recommendation = await ChatController.instance.getRecommendation(subject: profile.currentSubject);
+      if (!mounted) return;
+      setState(() {
+        _username = profile.username;
+        _subject = profile.currentSubject;
+        _sessions = sessions;
+        _progress = Map<String, dynamic>.from(progress['progress'] is Map ? progress['progress'] as Map : {});
+        _recommendation = recommendation;
+        _loading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _recommendation = 'Unable to load dashboard data: ${error.toString()}';
+      });
+    }
+  }
+
+  double _overallProgress() {
+    if (_progress.isEmpty) return 0;
+    final values = _progress.values.whereType<num>().map((value) => value.toDouble()).toList();
+    if (values.isEmpty) return 0;
+    return (values.reduce((a, b) => a + b) / values.length / 100).clamp(0, 1);
+  }
+
+  String _formatTime(DateTime? createdAt) {
+    if (createdAt == null) return 'Just now';
+    final local = createdAt.toLocal();
+    final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
+    final minute = local.minute.toString().padLeft(2, '0');
+    final suffix = local.hour >= 12 ? 'PM' : 'AM';
+    return '${local.month}/${local.day}, $hour:$minute $suffix';
+  }
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final colors = ThemeUtils.getColors(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     return SafeArea(
       child: CustomScrollView(
@@ -23,14 +88,14 @@ class HomeScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Welcome back, Priyansh',
+                    'Welcome back, $_username',
                     style: textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Your coding momentum is strong today.',
+                    'Your current focus is ${_subject.toUpperCase()}.',
                     style: textTheme.bodyMedium?.copyWith(
                       color: isDark ? Colors.white70 : Colors.black54,
                     ),
@@ -42,14 +107,14 @@ class HomeScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                       gradient: LinearGradient(
                         colors: isDark
-                            ? [const Color(0xFF4F46E5), const Color(0xFFC4B5FD)]
-                            : [const Color(0xFF4F46E5), const Color(0xFFA5B4FC)],
+                            ? [const Color(0xFF4F46E5), const Color(0xFF93C5FD)]
+                            : [const Color(0xFF0F766E), const Color(0xFF22C55E)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: colors.primary.withOpacity(0.2),
+                          color: colors.primary.withValues(alpha: 0.2),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -67,9 +132,9 @@ class HomeScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        const Text(
-                          'Complete 2 debugging sessions and 1 quiz',
-                          style: TextStyle(
+                        Text(
+                          'Complete one ${_subject == 'general' ? 'learning' : _subject} session and one quiz',
+                          style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w700,
                             fontSize: 18,
@@ -79,7 +144,7 @@ class HomeScreen extends StatelessWidget {
                         ClipRRect(
                           borderRadius: BorderRadius.circular(12),
                           child: LinearProgressIndicator(
-                            value: 0.65,
+                            value: _overallProgress().clamp(0, 1),
                             minHeight: 8,
                             backgroundColor: Colors.white24,
                             valueColor: const AlwaysStoppedAnimation<Color>(
@@ -88,9 +153,9 @@ class HomeScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        const Text(
-                          '65% Complete - 1 of 3 tasks done',
-                          style: TextStyle(
+                        Text(
+                          '${(_overallProgress() * 100).toStringAsFixed(0)}% average progress across subjects',
+                          style: const TextStyle(
                             color: Colors.white70,
                             fontSize: 12,
                           ),
@@ -104,6 +169,13 @@ class HomeScreen extends StatelessWidget {
                     style: textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    _recommendation.isEmpty
+                        ? 'Your mentor will surface the next best action here.'
+                        : _recommendation,
+                    style: textTheme.bodyMedium,
                   ),
                 ],
               ),
@@ -157,21 +229,19 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  const SessionTile(
-                    topic: 'Binary Search Edge Cases',
-                    time: 'Today, 10:40 AM',
-                    tag: 'Debug',
-                  ),
-                  const SessionTile(
-                    topic: 'OOP in Java Quick Revision',
-                    time: 'Today, 9:05 AM',
-                    tag: 'Tutor',
-                  ),
-                  const SessionTile(
-                    topic: 'DSA Quiz - Arrays',
-                    time: 'Yesterday, 8:30 PM',
-                    tag: 'Quiz',
-                  ),
+                  if (_sessions.isEmpty)
+                    Text(
+                      'No sessions yet. Start a chat to see your history here.',
+                      style: textTheme.bodyMedium,
+                    )
+                  else
+                    ..._sessions.take(3).map(
+                      (session) => SessionTile(
+                        topic: session.name,
+                        time: _formatTime(session.createdAt),
+                        tag: session.subject,
+                      ),
+                    ),
                 ],
               ),
             ),

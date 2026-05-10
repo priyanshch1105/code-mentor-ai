@@ -1,15 +1,75 @@
 import 'package:flutter/material.dart';
 
+import '../../controllers/auth_controller.dart';
+import '../../controllers/chat_controller.dart';
 import '../utils/theme_utils.dart';
 import '../widgets/section_card.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  bool _loading = true;
+  String _subject = 'general';
+  Map<String, dynamic> _progress = {};
+  Map<String, dynamic> _recommendation = {};
+  List<Map<String, dynamic>> _quizHistory = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    try {
+      final profile = await AuthController.instance.loadCurrentUser();
+      final progressResponse = await ChatController.instance.getProgress();
+      final recommendation = await ChatController.instance.getQuizRecommendations();
+      final quizHistory = await ChatController.instance.getQuizHistory();
+      if (!mounted) return;
+      setState(() {
+        _subject = profile.currentSubject;
+        _progress = Map<String, dynamic>.from(progressResponse['progress'] is Map ? progressResponse['progress'] as Map : {});
+        _recommendation = Map<String, dynamic>.from(recommendation);
+        _quizHistory = List<Map<String, dynamic>>.from(quizHistory['quiz_history'] is List ? quizHistory['quiz_history'] as List : const []);
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+    }
+  }
+
+  double _averageProgress() {
+    final values = _progress.values.whereType<num>().map((value) => value.toDouble()).toList();
+    if (values.isEmpty) return 0;
+    return (values.reduce((a, b) => a + b) / values.length / 100).clamp(0, 1);
+  }
+
+  String _formatQuizPercent(dynamic value) {
+    if (value is num) {
+      return '${value.toStringAsFixed(0)}%';
+    }
+    final parsed = double.tryParse(value?.toString() ?? '');
+    return parsed == null ? '--' : '${parsed.toStringAsFixed(0)}%';
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = ThemeUtils.getColors(context);
+
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final recentQuiz = _quizHistory.isNotEmpty ? _quizHistory.first : null;
+    final progressCount = _progress.length;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -23,26 +83,26 @@ class DashboardScreen extends StatelessWidget {
           childAspectRatio: 1.6,
           children: [
             _StatCard(
-              label: 'Sessions',
-              value: '32',
+              label: 'Subjects',
+              value: '$progressCount',
               color: colors.primary,
               icon: Icons.menu_book,
             ),
             _StatCard(
-              label: 'Progress',
-              value: '78%',
+              label: 'Average',
+              value: '${(_averageProgress() * 100).toStringAsFixed(0)}%',
               color: colors.success,
               icon: Icons.trending_up,
             ),
             _StatCard(
-              label: 'Quizzes',
-              value: '14',
+              label: 'Recent Quiz',
+              value: recentQuiz == null ? '--' : _formatQuizPercent(recentQuiz['percentage']),
               color: colors.warning,
               icon: Icons.quiz,
             ),
             _StatCard(
-              label: 'Active Days',
-              value: '11',
+              label: 'Current',
+              value: _subject.toUpperCase(),
               color: colors.secondary,
               icon: Icons.access_time,
             ),
@@ -60,18 +120,16 @@ class DashboardScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 10),
-              _BarRow(
-                label: 'Data Structures',
-                value: 0.86,
-                color: colors.primary,
-              ),
-              _BarRow(label: 'Algorithms', value: 0.68, color: colors.success),
-              _BarRow(
-                label: 'System Design',
-                value: 0.42,
-                color: colors.warning,
-              ),
-              _BarRow(label: 'Databases', value: 0.54, color: colors.secondary),
+              if (_progress.isEmpty)
+                Text('Progress will appear after you complete chat or quiz sessions.', style: theme.textTheme.bodyMedium)
+              else
+                ..._progress.entries.map(
+                  (entry) => _BarRow(
+                    label: entry.key,
+                    value: (entry.value as num).toDouble() / 100,
+                    color: colors.primary,
+                  ),
+                ),
             ],
           ),
         ),
@@ -88,12 +146,12 @@ class DashboardScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Focus next on recursion and tree traversal. Your quiz accuracy improved 9% this week; keep consistency with 1 mock quiz daily.',
+                _recommendation['recommendations']?.toString() ?? 'Keep moving with one study session and one quiz today.',
                 style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(height: 10),
               OutlinedButton.icon(
-                onPressed: () {},
+                onPressed: _bootstrap,
                 icon: const Icon(Icons.refresh),
                 label: const Text('Refresh Insights'),
               ),

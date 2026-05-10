@@ -21,7 +21,7 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  int _selectedIndex = 0;
+  int _selectedIndex = 3;
 
   final List<String> _titles = [
     'Home',
@@ -83,7 +83,7 @@ class _AppShellState extends State<AppShell> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: _onNavItemTapped,
-        indicatorColor: colors.primary.withOpacity(0.12),
+        indicatorColor: colors.primary.withValues(alpha: 0.12),
         backgroundColor: colors.surface,
         surfaceTintColor: Colors.transparent,
         elevation: 8,
