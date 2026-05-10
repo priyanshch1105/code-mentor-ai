@@ -85,6 +85,16 @@ class AppRepository {
     return prefs.getString('auth_token');
   }
 
+  Map<String, dynamic> _asMap(dynamic value) {
+    if (value is Map<String, dynamic>) {
+      return value;
+    }
+    if (value is Map) {
+      return Map<String, dynamic>.from(value);
+    }
+    return <String, dynamic>{};
+  }
+
   Future<void> clearSession() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
@@ -118,6 +128,63 @@ class AppRepository {
     await _client.post('/api/auth/select-subject', data: SubjectRequest(subject: subject).toJson());
   }
 
+  Future<int> createChatSession(String subject) async {
+    final response = await _client.post('/api/sessions/create', data: {'subject': subject});
+    final data = _asMap(response.data);
+    return (data['session_id'] as num?)?.toInt() ?? 0;
+  }
+
+  Future<Map<String, dynamic>> sendChatMessage({
+    required int sessionId,
+    required String prompt,
+  }) async {
+    final response = await _client.post(
+      '/api/sessions/add-message',
+      data: {
+        'session_id': sessionId,
+        'prompt': prompt,
+      },
+    );
+    return _asMap(response.data);
+  }
+
+  Future<List<SessionSummary>> fetchSessionSummaries() async {
+    final response = await _client.get('/api/sessions/list');
+    final sessions = response.data is List ? response.data as List : <dynamic>[];
+    return sessions
+        .map((item) => SessionSummary.fromJson(_asMap(item)))
+        .toList();
+  }
+
+  Future<Map<String, dynamic>> fetchSessionDetail(int sessionId) async {
+    final response = await _client.get('/api/sessions/$sessionId');
+    return _asMap(response.data);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchSessionMessages(
+    int sessionId, {
+    int page = 1,
+    int limit = 10,
+  }) async {
+    final response = await _client.get(
+      '/api/sessions/messages/$sessionId',
+      queryParameters: {'page': page, 'limit': limit},
+    );
+    final messages = response.data is List ? response.data as List : <dynamic>[];
+    return messages.map((item) => _asMap(item)).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> fetchCodeSessions() async {
+    final response = await _client.get('/api/code/sessions');
+    final sessions = response.data is List ? response.data as List : <dynamic>[];
+    return sessions.map((item) => _asMap(item)).toList();
+  }
+
+  Future<Map<String, dynamic>> fetchCodeSessionDetail(int sessionId) async {
+    final response = await _client.get('/api/code/sessions/$sessionId');
+    return _asMap(response.data);
+  }
+
   Future<QaResult> askQuestion(QaRequest request) async {
     final response = await _client.post('/api/qa', data: request.toJson());
     return QaResult.fromJson(response.data as Map<String, dynamic>);
@@ -143,7 +210,58 @@ class AppRepository {
 
   Future<Map<String, dynamic>> fetchProgress() async {
     final response = await _client.get('/api/recommend/progress');
-    return Map<String, dynamic>.from(response.data as Map);
+    return _asMap(response.data);
+  }
+
+  Future<Map<String, dynamic>> fetchQuizRecommendations() async {
+    final response = await _client.get('/api/quiz/recommendations');
+    return _asMap(response.data);
+  }
+
+  Future<Map<String, dynamic>> fetchQuizHistory() async {
+    final response = await _client.get('/api/quiz/history');
+    return _asMap(response.data);
+  }
+
+  Future<Map<String, dynamic>> createQuiz({
+    required String subject,
+    String difficulty = 'beginner',
+    String quizType = 'mixed',
+    int totalQuestions = 5,
+    int timeLimit = 600,
+  }) async {
+    final response = await _client.post(
+      '/api/quiz/create',
+      data: {
+        'subject': subject,
+        'difficulty': difficulty,
+        'quiz_type': quizType,
+        'total_questions': totalQuestions,
+        'time_limit': timeLimit,
+      },
+    );
+    return _asMap(response.data);
+  }
+
+  Future<Map<String, dynamic>> fetchQuizQuestions(int quizId) async {
+    final response = await _client.get('/api/quiz/$quizId/questions');
+    return _asMap(response.data);
+  }
+
+  Future<Map<String, dynamic>> submitQuiz({
+    required int quizId,
+    required List<Map<String, dynamic>> answers,
+    int totalTimeTaken = 0,
+  }) async {
+    final response = await _client.post(
+      '/api/quiz/submit',
+      data: {
+        'quiz_id': quizId,
+        'answers': answers,
+        'total_time_taken': totalTimeTaken,
+      },
+    );
+    return _asMap(response.data);
   }
 
   Future<String> fetchRecommendation({String? subject}) async {
