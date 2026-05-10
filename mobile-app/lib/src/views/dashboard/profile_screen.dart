@@ -7,10 +7,12 @@ class ProfileScreen extends StatelessWidget {
     super.key,
     required this.isDark,
     required this.onThemeToggle,
+    required this.onLogout,
   });
 
   final bool isDark;
   final VoidCallback onThemeToggle;
+  final VoidCallback onLogout;
 
   @override
   Widget build(BuildContext context) {
@@ -126,7 +128,7 @@ class ProfileScreen extends StatelessWidget {
                     label: const Text('Notifications'),
                   ),
                   OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: onLogout,
                     icon: const Icon(Icons.logout),
                     label: const Text('Logout'),
                   ),
