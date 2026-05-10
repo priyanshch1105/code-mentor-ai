@@ -1,3 +1,7 @@
+import 'package:code_mentor_mobile/src/models/request/login_request.dart';
+import 'package:code_mentor_mobile/src/models/request/signup_request.dart';
+import 'package:code_mentor_mobile/src/models/response/user_profile.dart';
+
 import '../models/repository.dart';
 
 class AuthController {

@@ -1,3 +1,6 @@
+import 'package:code_mentor_mobile/src/models/request/code_debug_request.dart';
+import 'package:code_mentor_mobile/src/models/response/code_debug_result.dart';
+
 import '../models/repository.dart';
 
 class CodeDebugController {

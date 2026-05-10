@@ -1,3 +1,7 @@
+import 'package:code_mentor_mobile/src/models/request/qa_request.dart';
+import 'package:code_mentor_mobile/src/models/response/qa_result.dart';
+import 'package:code_mentor_mobile/src/models/response/session_summary.dart';
+
 import '../models/repository.dart';
 
 class ChatController {
