@@ -112,6 +112,10 @@ class Settings(BaseSettings):
         return self.groq_base_url
 
     @property
+    def GROK_MODEL(self) -> str:
+        return self.ai_model
+
+    @property
     def REDIS_URL(self) -> str:
         return self.redis_url
 
