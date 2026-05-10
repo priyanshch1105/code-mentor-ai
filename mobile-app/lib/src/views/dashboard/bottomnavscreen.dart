@@ -8,8 +8,13 @@ import 'profile_screen.dart';
 
 class AppShell extends StatefulWidget {
   final VoidCallback onToggleTheme;
+  final VoidCallback onLogout;
 
-  const AppShell({super.key, required this.onToggleTheme});
+  const AppShell({
+    super.key,
+    required this.onToggleTheme,
+    required this.onLogout,
+  });
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -17,14 +22,6 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int _selectedIndex = 0;
-
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const DashboardScreen(),
-    const LearningPathScreen(),
-    const ChatScreen(),
-    ProfileScreen(isDark: null, onThemeToggle: () {  },),
-  ];
 
   final List<String> _titles = [
     'Home',
@@ -43,23 +40,54 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final screens = [
+      const HomeScreen(),
+      const DashboardScreen(),
+      const LearningPathScreen(),
+      const ChatScreen(),
+      ProfileScreen(
+        isDark: isDark,
+        onThemeToggle: widget.onToggleTheme,
+        onLogout: widget.onLogout,
+      ),
+    ];
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_titles[_selectedIndex]),
+        title: Text(
+          _titles[_selectedIndex],
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+        ),
         elevation: 1,
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.brightness_4),
-            onPressed: widget.onToggleTheme,
-            tooltip: 'Toggle theme',
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: IconButton(
+              icon: Icon(
+                isDark ? Icons.light_mode : Icons.dark_mode,
+                size: 22,
+              ),
+              onPressed: widget.onToggleTheme,
+              tooltip: 'Toggle theme',
+              splashRadius: 24,
+            ),
           ),
         ],
       ),
-      body: _screens[_selectedIndex],
+      body: screens[_selectedIndex],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: _onNavItemTapped,
+        indicatorColor: colors.primary.withOpacity(0.12),
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 8,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         destinations: [
           NavigationDestination(
             icon: const Icon(Icons.home_outlined),
@@ -67,8 +95,8 @@ class _AppShellState extends State<AppShell> {
             label: 'Home',
           ),
           NavigationDestination(
-            icon: const Icon(Icons.dashboard_outlined),
-            selectedIcon: const Icon(Icons.dashboard),
+            icon: const Icon(Icons.analytics_outlined),
+            selectedIcon: const Icon(Icons.analytics),
             label: 'Dashboard',
           ),
           NavigationDestination(
