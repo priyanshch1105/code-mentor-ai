@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
-import '../../controllers/controllers.dart';
+import '../../controllers/auth_controller.dart';
 
 class SignupScreen extends StatefulWidget {
   final VoidCallback onSignupSuccess;

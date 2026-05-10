@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../controllers/controllers.dart';
+import '../../controllers/code_debug_controller.dart';
 import '../widgets/section_card.dart';
 
 class CodeDebugScreen extends StatefulWidget {
