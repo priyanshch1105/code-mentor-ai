@@ -37,21 +37,34 @@ class HomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 18),
                   Container(
-                    padding: const EdgeInsets.all(18),
+                    padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(20),
                       gradient: LinearGradient(
-                        colors: [colors.primary, colors.success],
+                        colors: isDark
+                            ? [const Color(0xFF4F46E5), const Color(0xFFC4B5FD)]
+                            : [const Color(0xFF4F46E5), const Color(0xFFA5B4FC)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: colors.primary.withOpacity(0.2),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
                           'Daily Goal',
-                          style: TextStyle(color: Colors.white70),
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         const Text(
@@ -62,22 +75,30 @@ class HomeScreen extends StatelessWidget {
                             fontSize: 18,
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 16),
                         ClipRRect(
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(12),
                           child: LinearProgressIndicator(
                             value: 0.65,
-                            minHeight: 9,
+                            minHeight: 8,
                             backgroundColor: Colors.white24,
                             valueColor: const AlwaysStoppedAnimation<Color>(
                               Colors.white,
                             ),
                           ),
                         ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          '65% Complete - 1 of 3 tasks done',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
                   Text(
                     'Explore',
                     style: textTheme.titleLarge?.copyWith(
@@ -92,9 +113,9 @@ class HomeScreen extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             sliver: SliverGrid.count(
               crossAxisCount: 2,
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 10,
-              childAspectRatio: 1.08,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 1.1,
               children: [
                 FeatureCard(
                   icon: Icons.smart_toy_outlined,
@@ -125,7 +146,7 @@ class HomeScreen extends StatelessWidget {
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -135,7 +156,7 @@ class HomeScreen extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   const SessionTile(
                     topic: 'Binary Search Edge Cases',
                     time: 'Today, 10:40 AM',
