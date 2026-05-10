@@ -4,6 +4,7 @@ REST API for AI-powered learning platform
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from routers import qa, recommend, code_debug, auth, sessions, quiz
 from db import engine
 from models.base import Base
@@ -88,12 +89,12 @@ def health_check():
         }
     except Exception as e:
         logger.error(f"Health check failed: {e}")
-        return {
+        return JSONResponse(status_code=503, content={
             "status": "unhealthy",
-                        "api": "running",
+            "api": "running",
             "database": "disconnected",
             "error": str(e)
-        }, 503
+        })
 
 
 @app.get("/", tags=["root"])

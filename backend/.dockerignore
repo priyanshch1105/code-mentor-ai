@@ -14,7 +14,6 @@ venv/
 logs/
 datasets/
 data/
-sqlite.db
 backend/env/
 backend/venv/
 backend/.env

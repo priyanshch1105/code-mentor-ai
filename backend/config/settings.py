@@ -1,4 +1,5 @@
 import os
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from dotenv import load_dotenv
 
@@ -20,9 +21,7 @@ class Settings(BaseSettings):
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
     
     # Database
-    database_url: str = os.getenv(
-        "DATABASE_URL"
-    )
+    database_url: str = os.getenv("DATABASE_URL", "")
     
     # JWT
     jwt_secret_key: str = os.getenv("JWT_SECRET_KEY") or os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
@@ -115,5 +114,22 @@ class Settings(BaseSettings):
     @property
     def REDIS_URL(self) -> str:
         return self.redis_url
+
+    @field_validator("database_url")
+    @classmethod
+    def validate_database_url(cls, value: str) -> str:
+        if not value:
+            raise ValueError("DATABASE_URL is required and must point to PostgreSQL")
+
+        postgres_prefixes = (
+            "postgresql://",
+            "postgresql+psycopg2://",
+            "postgresql+psycopg://",
+            "postgres://",
+        )
+        if not value.startswith(postgres_prefixes):
+            raise ValueError("Only PostgreSQL DATABASE_URL is supported")
+
+        return value
     
 settings = Settings()
