@@ -21,6 +21,8 @@ services:
       dockerfile: Dockerfile
     environment:
       - DATABASE_URL=postgresql://code_mentor_user:code_mentor_pass@postgres:5432/code_mentor
+      - AI_MODEL=openai/gpt-oss-120b
+      - AI_FALLBACK_MODELS=llama-3.3-70b-versatile,llama-3.1-8b-instant
       - ENVIRONMENT=production
     expose:
       - "8000"
