@@ -13,7 +13,7 @@ class LearningPathScreen extends StatefulWidget {
 
 class _LearningPathScreenState extends State<LearningPathScreen> {
   bool _loading = true;
-  String _subject = 'general';
+  String _subject = 'code tutor';
   Map<String, dynamic> _progress = {};
   String _recommendation = '';
 
@@ -27,11 +27,17 @@ class _LearningPathScreenState extends State<LearningPathScreen> {
     try {
       final profile = await AuthController.instance.loadCurrentUser();
       final progressResponse = await ChatController.instance.getProgress();
-      final recommendation = await ChatController.instance.getRecommendation(subject: profile.currentSubject);
+      final recommendation = await ChatController.instance.getRecommendation(
+        subject: profile.currentSubject,
+      );
       if (!mounted) return;
       setState(() {
         _subject = profile.currentSubject;
-        _progress = Map<String, dynamic>.from(progressResponse['progress'] is Map ? progressResponse['progress'] as Map : {});
+        _progress = Map<String, dynamic>.from(
+          progressResponse['progress'] is Map
+              ? progressResponse['progress'] as Map
+              : {},
+        );
         _recommendation = recommendation;
         _loading = false;
       });
@@ -45,7 +51,9 @@ class _LearningPathScreenState extends State<LearningPathScreen> {
     try {
       await AuthController.instance.selectSubject(subject);
       final profile = await AuthController.instance.loadCurrentUser();
-      final recommendation = await ChatController.instance.getRecommendation(subject: profile.currentSubject);
+      final recommendation = await ChatController.instance.getRecommendation(
+        subject: profile.currentSubject,
+      );
       if (!mounted) return;
       setState(() {
         _subject = profile.currentSubject;
@@ -60,33 +68,11 @@ class _LearningPathScreenState extends State<LearningPathScreen> {
   }
 
   List<_PathStepData> _stepsForSubject() {
-    switch (_subject) {
-      case 'math':
-        return const [
-          _PathStepData('Core formulas and notation', 0.85, 'Warm up complete'),
-          _PathStepData('Problem solving patterns', 0.6, '2 sessions left'),
-          _PathStepData('Timed practice set', 0.3, 'Start next'),
-        ];
-      case 'physics':
-        return const [
-          _PathStepData('Conceptual foundations', 0.8, 'Warm up complete'),
-          _PathStepData('Numerical problem practice', 0.5, '3 sessions left'),
-          _PathStepData('Exam-style mixed drills', 0.2, 'Start next'),
-        ];
-      case 'ielts':
-        return const [
-          _PathStepData('Vocabulary and grammar', 0.75, 'Warm up complete'),
-          _PathStepData('Reading and listening drills', 0.55, '2 sessions left'),
-          _PathStepData('Mock test review', 0.25, 'Start next'),
-        ];
-      case 'coding':
-      default:
-        return const [
-          _PathStepData('Arrays and two pointers', 0.9, 'Warm up complete'),
-          _PathStepData('Binary search patterns', 0.6, '2 sessions left'),
-          _PathStepData('Recursion and DP basics', 0.25, 'Start next'),
-        ];
-    }
+    return const [
+      _PathStepData('Arrays and two pointers', 0.9, 'Warm up complete'),
+      _PathStepData('Binary search patterns', 0.6, '2 sessions left'),
+      _PathStepData('Recursion and DP basics', 0.25, 'Start next'),
+    ];
   }
 
   @override
@@ -117,7 +103,9 @@ class _LearningPathScreenState extends State<LearningPathScreen> {
                   Text(
                     'Your personalized roadmap for this week',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
+                      color: theme.textTheme.bodyMedium?.color?.withValues(
+                        alpha: 0.7,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -125,10 +113,12 @@ class _LearningPathScreenState extends State<LearningPathScreen> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      ChoiceChip(label: const Text('Coding'), selected: _subject == 'coding', onSelected: (_) => _setSubject('coding')),
-                      ChoiceChip(label: const Text('Math'), selected: _subject == 'math', onSelected: (_) => _setSubject('math')),
-                      ChoiceChip(label: const Text('Physics'), selected: _subject == 'physics', onSelected: (_) => _setSubject('physics')),
-                      ChoiceChip(label: const Text('IELTS'), selected: _subject == 'ielts', onSelected: (_) => _setSubject('ielts')),
+                      ChoiceChip(
+                        label: const Text('Code Tutor'),
+                        selected:
+                            _subject == 'coding' || _subject == 'code tutor',
+                        onSelected: (_) => _setSubject('coding'),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -139,7 +129,9 @@ class _LearningPathScreenState extends State<LearningPathScreen> {
                       color: colors.primary.withValues(alpha: 0.08),
                     ),
                     child: Text(
-                      _recommendation.isEmpty ? 'Your next best step will appear here.' : _recommendation,
+                      _recommendation.isEmpty
+                          ? 'Your next best step will appear here.'
+                          : _recommendation,
                       style: theme.textTheme.bodyMedium,
                     ),
                   ),
@@ -155,25 +147,23 @@ class _LearningPathScreenState extends State<LearningPathScreen> {
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             sliver: SliverList(
-              delegate: SliverChildListDelegate(
-                [
-                  ..._stepsForSubject().asMap().entries.expand((entry) {
-                    final index = entry.key;
-                    final step = entry.value;
-                    return [
-                      _PathStep(
-                        title: step.title,
-                        progress: step.progress,
-                        eta: step.eta,
-                        color: index.isEven ? colors.primary : colors.success,
-                        index: index + 1,
-                      ),
-                      const SizedBox(height: 12),
-                    ];
-                  }),
-                  const SizedBox(height: 20),
-                ],
-              ),
+              delegate: SliverChildListDelegate([
+                ..._stepsForSubject().asMap().entries.expand((entry) {
+                  final index = entry.key;
+                  final step = entry.value;
+                  return [
+                    _PathStep(
+                      title: step.title,
+                      progress: step.progress,
+                      eta: step.eta,
+                      color: index.isEven ? colors.primary : colors.success,
+                      index: index + 1,
+                    ),
+                    const SizedBox(height: 12),
+                  ];
+                }),
+                const SizedBox(height: 20),
+              ]),
             ),
           ),
         ],
