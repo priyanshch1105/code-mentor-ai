@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MdLightbulbOutline, MdTrendingUp, MdMenuBook, MdArrowForward, MdMessage, MdCode, MdCalculate, MdScience, MdBook } from 'react-icons/md';
+import { MdLightbulbOutline, MdTrendingUp, MdMenuBook, MdArrowForward, MdMessage, MdCode, MdBook } from 'react-icons/md';
 import api from '../services/api';
 import { toast } from 'react-toastify';
 
@@ -13,12 +13,20 @@ const RecommendationsWidget = ({ setCurrentView, setShowSubjectModal, startNewCh
     fetchRecommendations();
   }, [recommendationSubject]); // Re-fetch when recommendation subject changes
 
+  const normalizeSubject = (subject) => {
+    const value = String(subject || '').trim().toLowerCase();
+    if (!value || value === 'general' || value === 'code tutor') {
+      return 'coding';
+    }
+    return value;
+  };
+
   const fetchRecommendations = async () => {
     try {
       setLoading(true);
       const [recommendRes, progressRes] = await Promise.all([
         api.get('/api/recommend/', { 
-          params: recommendationSubject && recommendationSubject !== 'general' ? { subject: recommendationSubject } : {} 
+          params: normalizeSubject(recommendationSubject) !== 'coding' ? { subject: normalizeSubject(recommendationSubject) } : {} 
         }),
         api.get('/api/recommend/progress')
       ]);
@@ -50,7 +58,7 @@ const RecommendationsWidget = ({ setCurrentView, setShowSubjectModal, startNewCh
       });
     } else {
       // Use recommendation subject if available, otherwise find weakest
-      const targetSubject = recommendationSubject && recommendationSubject !== 'general' ? recommendationSubject : 
+      const targetSubject = normalizeSubject(recommendationSubject) !== 'coding' ? normalizeSubject(recommendationSubject) : 
         subjects.reduce((min, subject) => 
           (progress[subject] || 0) < (progress[min] || 0) ? subject : min
         );
@@ -66,31 +74,13 @@ const RecommendationsWidget = ({ setCurrentView, setShowSubjectModal, startNewCh
             { label: 'Take Coding Quiz', action: () => setCurrentView('quiz') }
           ]
         },
-        math: {
-          icon: MdCalculate,
-          color: 'text-blue-400',
+        coding: {
+          icon: MdCode,
+          color: 'text-green-400',
           actions: [
-            { label: 'Math Problems', action: () => setCurrentView('chat') },
-            { label: 'Ask Math Questions', action: () => setCurrentView('chat') },
-            { label: 'Take Math Quiz', action: () => setCurrentView('quiz') }
-          ]
-        },
-        ielts: {
-          icon: MdBook,
-          color: 'text-purple-400',
-          actions: [
-            { label: 'IELTS Practice', action: () => setCurrentView('chat') },
-            { label: 'Writing Tips', action: () => setCurrentView('chat') },
-            { label: 'Take IELTS Quiz', action: () => setCurrentView('quiz') }
-          ]
-        },
-        physics: {
-          icon: MdScience,
-          color: 'text-orange-400',
-          actions: [
-            { label: 'Physics Problems', action: () => setCurrentView('chat') },
-            { label: 'Ask Physics Questions', action: () => setCurrentView('chat') },
-            { label: 'Take Physics Quiz', action: () => setCurrentView('quiz') }
+            { label: 'Practice Coding', action: () => setCurrentView('code') },
+            { label: 'Ask Coding Questions', action: () => setCurrentView('chat') },
+            { label: 'Take Coding Quiz', action: () => setCurrentView('quiz') }
           ]
         }
       };
@@ -99,11 +89,11 @@ const RecommendationsWidget = ({ setCurrentView, setShowSubjectModal, startNewCh
       
       actions.push(
         {
-          label: `Focus on ${targetSubject.charAt(0).toUpperCase() + targetSubject.slice(1)}`,
+          label: 'Focus on Coding',
           icon: currentSubjectActions.icon,
           action: () => {
             setCurrentView('chat');
-            toast.info(`Let's work on ${targetSubject}!`);
+            toast.info("Let's work on coding!");
           },
           color: currentSubjectActions.color
         },
@@ -150,13 +140,13 @@ const RecommendationsWidget = ({ setCurrentView, setShowSubjectModal, startNewCh
       </div>
 
       {/* Current Recommendation Subject Display */}
-      {recommendationSubject && recommendationSubject !== 'general' && (
+      {normalizeSubject(recommendationSubject) === 'coding' && (
         <div className="mb-3 p-2 bg-blue-600/20 rounded-lg border border-blue-500/30">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <MdBook className="w-4 h-4 text-blue-400 mr-2" />
               <span className="text-xs text-blue-300 font-medium">
-                Focus: {recommendationSubject.charAt(0).toUpperCase() + recommendationSubject.slice(1)}
+                Focus: Coding
               </span>
             </div>
             <button
@@ -239,7 +229,7 @@ const RecommendationsWidget = ({ setCurrentView, setShowSubjectModal, startNewCh
             ))}
             {Object.keys(progress).length > 3 && (
               <div className="text-xs text-gray-500 text-center pt-1">
-                +{Object.keys(progress).length - 3} more subjects
+                +{Object.keys(progress).length - 3} more learning areas
               </div>
             )}
           </div>
