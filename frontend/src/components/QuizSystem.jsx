@@ -493,10 +493,10 @@ const QuizSystem = ({ setCurrentView }) => {
       )}
 
       {/* Manual Quiz Creation */}
-      <div className="border-t border-gray-700 pt-4 lg:pt-6">
+          <div className="border-t border-gray-700 pt-4 lg:pt-6">
         <h3 className="text-lg font-semibold text-white mb-4">Create Custom Quiz</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-          {['coding', 'math', 'ielts', 'physics'].map(subject => (
+          {['code tutor'].map(subject => (
             <div key={subject} className="bg-gray-700 rounded-lg p-3 lg:p-4 hover:bg-gray-600 transition-colors">
               <h4 className="font-semibold text-white capitalize mb-3 text-sm lg:text-base">{subject}</h4>
               <div className="space-y-2">
@@ -519,6 +519,30 @@ const QuizSystem = ({ setCurrentView }) => {
               </div>
             </div>
           ))}
+        </div>
+        <div className="mt-4">
+          <button
+            onClick={() => {
+              // load local test quiz data without backend (for quick testing)
+              const mockQuiz = { quiz_id: -1, title: 'Code Tutor — Test Quiz', total_questions: 3, time_limit: 600 };
+              const mockQuestions = [
+                { id: 1001, question_text: 'What is the output of console.log(typeof null)?', question_type: 'multiple_choice', options: ['"object"', '"null"', '"undefined"'], points: 10 },
+                { id: 1002, question_text: 'Which keyword declares a constant in JavaScript?', question_type: 'multiple_choice', options: ['let', 'var', 'const'], points: 10 },
+                { id: 1003, question_text: 'Explain what a closure is in JavaScript.', question_type: 'short_answer', options: [], points: 20 },
+              ];
+              setCurrentQuiz(mockQuiz);
+              setQuestions(mockQuestions);
+              setTimeLeft(mockQuiz.time_limit);
+              setQuizStatus('active');
+              setCurrentQuestionIndex(0);
+              setAnswers({});
+              setQuizStartTime(Date.now());
+              setCurrentQuestionStartTime(Date.now());
+            }}
+            className="mt-3 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg text-white"
+          >
+            Use Test Data (Code Tutor)
+          </button>
         </div>
       </div>
     </div>
