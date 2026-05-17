@@ -24,7 +24,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _loading = true;
   String _username = 'Learner';
   String _email = '';
-  String _subject = 'general';
+  String _subject = 'code tutor';
   Map<String, dynamic> _progress = {};
 
   @override
@@ -151,7 +151,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _InfoTile(
                 icon: Icons.school_outlined,
                 label: 'Preferred Subject',
-                value: _subject.toUpperCase(),
+                value: (_subject == 'general' ? 'code tutor' : _subject)
+                    .toUpperCase(),
               ),
               _InfoTile(
                 icon: Icons.analytics_outlined,
@@ -234,24 +235,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 runSpacing: 8,
                 children: [
                   ChoiceChip(
-                    label: const Text('Coding'),
-                    selected: _subject == 'coding',
+                    label: const Text('Code Tutor'),
+                    selected: _subject == 'coding' || _subject == 'code tutor',
                     onSelected: (_) => _setSubject('coding'),
-                  ),
-                  ChoiceChip(
-                    label: const Text('Math'),
-                    selected: _subject == 'math',
-                    onSelected: (_) => _setSubject('math'),
-                  ),
-                  ChoiceChip(
-                    label: const Text('Physics'),
-                    selected: _subject == 'physics',
-                    onSelected: (_) => _setSubject('physics'),
-                  ),
-                  ChoiceChip(
-                    label: const Text('IELTS'),
-                    selected: _subject == 'ielts',
-                    onSelected: (_) => _setSubject('ielts'),
                   ),
                 ],
               ),
