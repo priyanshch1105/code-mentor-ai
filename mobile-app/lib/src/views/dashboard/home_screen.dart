@@ -17,7 +17,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   bool _loading = true;
   String _username = 'Learner';
-  String _subject = 'general';
+  String _subject = 'code tutor';
   Map<String, dynamic> _progress = {};
   String _recommendation = '';
   List<SessionSummary> _sessions = [];
@@ -33,13 +33,17 @@ class _HomeScreenState extends State<HomeScreen> {
       final profile = await AuthController.instance.loadCurrentUser();
       final sessions = await ChatController.instance.getSessions();
       final progress = await ChatController.instance.getProgress();
-      final recommendation = await ChatController.instance.getRecommendation(subject: profile.currentSubject);
+      final recommendation = await ChatController.instance.getRecommendation(
+        subject: profile.currentSubject,
+      );
       if (!mounted) return;
       setState(() {
         _username = profile.username;
         _subject = profile.currentSubject;
         _sessions = sessions;
-        _progress = Map<String, dynamic>.from(progress['progress'] is Map ? progress['progress'] as Map : {});
+        _progress = Map<String, dynamic>.from(
+          progress['progress'] is Map ? progress['progress'] as Map : {},
+        );
         _recommendation = recommendation;
         _loading = false;
       });
@@ -54,7 +58,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   double _overallProgress() {
     if (_progress.isEmpty) return 0;
-    final values = _progress.values.whereType<num>().map((value) => value.toDouble()).toList();
+    final values = _progress.values
+        .whereType<num>()
+        .map((value) => value.toDouble())
+        .toList();
     if (values.isEmpty) return 0;
     return (values.reduce((a, b) => a + b) / values.length / 100).clamp(0, 1);
   }
@@ -95,7 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Your current focus is ${_subject.toUpperCase()}.',
+                    'Your current focus is ${_subject == 'general' ? 'CODE TUTOR' : _subject.toUpperCase()}.',
                     style: textTheme.bodyMedium?.copyWith(
                       color: isDark ? Colors.white70 : Colors.black54,
                     ),
@@ -108,7 +115,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       gradient: LinearGradient(
                         colors: isDark
                             ? [const Color(0xFF4F46E5), const Color(0xFF93C5FD)]
-                            : [const Color(0xFF0F766E), const Color(0xFF22C55E)],
+                            : [
+                                const Color(0xFF0F766E),
+                                const Color(0xFF22C55E),
+                              ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
@@ -133,7 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Complete one ${_subject == 'general' ? 'learning' : _subject} session and one quiz',
+                          'Complete one ${_subject == 'general' ? 'code tutor' : _subject} session and one quiz',
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w700,
@@ -235,13 +245,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: textTheme.bodyMedium,
                     )
                   else
-                    ..._sessions.take(3).map(
-                      (session) => SessionTile(
-                        topic: session.name,
-                        time: _formatTime(session.createdAt),
-                        tag: session.subject,
-                      ),
-                    ),
+                    ..._sessions
+                        .take(3)
+                        .map(
+                          (session) => SessionTile(
+                            topic: session.name,
+                            time: _formatTime(session.createdAt),
+                            tag: session.subject,
+                          ),
+                        ),
                 ],
               ),
             ),
