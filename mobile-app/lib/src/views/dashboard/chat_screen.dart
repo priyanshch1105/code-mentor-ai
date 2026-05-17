@@ -19,9 +19,21 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _loading = true;
   bool _sending = false;
   bool _loadingHistory = false;
-  String _currentSubject = 'general';
+  String _currentSubject = 'coding';
   int? _sessionId;
   String _sessionName = 'New Chat';
+
+  String _normalizeSubject(String? subject) {
+    final value = (subject ?? '').trim().toLowerCase();
+    if (value.isEmpty || value == 'general' || value == 'code tutor') {
+      return 'coding';
+    }
+    return value;
+  }
+
+  String _subjectDisplayLabel(String subject) {
+    return subject == 'coding' ? 'CODE TUTOR' : subject.toUpperCase();
+  }
 
   @override
   void initState() {
@@ -42,30 +54,26 @@ class _ChatScreenState extends State<ChatScreen> {
       final sessions = await ChatController.instance.getSessions();
       if (!mounted) return;
       setState(() {
-        _currentSubject = profile.currentSubject;
+        _currentSubject = _normalizeSubject(profile.currentSubject);
         _sessions
           ..clear()
           ..addAll(sessions);
         _loading = false;
       });
-      if (_currentSubject != 'general') {
-        await _selectSession(sessions.isNotEmpty ? sessions.first.id : null);
-      } else {
-        _messages.add(const _ChatMessage(
-          isUser: false,
-          text: 'Select a subject to start your study session.',
-        ));
-      }
+      await _selectSession(sessions.isNotEmpty ? sessions.first.id : null);
     } catch (error) {
       if (!mounted) return;
       setState(() {
         _loading = false;
         _messages
           ..clear()
-          ..add(_ChatMessage(
-            isUser: false,
-            text: 'Chat is ready once your session loads. ${error.toString()}',
-          ));
+          ..add(
+            _ChatMessage(
+              isUser: false,
+              text:
+                  'Chat is ready once your session loads. ${error.toString()}',
+            ),
+          );
       });
     }
   }
@@ -87,10 +95,13 @@ class _ChatScreenState extends State<ChatScreen> {
         _sessionName = 'New Chat';
         _messages
           ..clear()
-          ..add(const _ChatMessage(
-            isUser: false,
-            text: 'New chat started. Ask anything about coding, quizzes, or debugging.',
-          ));
+          ..add(
+            const _ChatMessage(
+              isUser: false,
+              text:
+                  'New chat started. Ask anything about coding, quizzes, or debugging.',
+            ),
+          );
       });
       return;
     }
@@ -107,7 +118,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
       setState(() {
         _sessionName = session['name']?.toString() ?? 'Chat Session';
-        _currentSubject = session['subject']?.toString() ?? _currentSubject;
+        _currentSubject = _normalizeSubject(session['subject']?.toString());
         _messages
           ..clear()
           ..addAll(
@@ -119,10 +130,12 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           );
         if (_messages.isEmpty) {
-          _messages.add(const _ChatMessage(
-            isUser: false,
-            text: 'This session is empty. Start the conversation below.',
-          ));
+          _messages.add(
+            const _ChatMessage(
+              isUser: false,
+              text: 'This session is empty. Start the conversation below.',
+            ),
+          );
         }
       });
     } catch (error) {
@@ -140,13 +153,6 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _sendMessage() async {
     final prompt = _messageController.text.trim();
     if (prompt.isEmpty || _sending) return;
-
-    if (_currentSubject == 'general') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('First select a subject to continue.')),
-      );
-      return;
-    }
 
     setState(() {
       _messages.add(_ChatMessage(isUser: true, text: prompt));
@@ -192,7 +198,7 @@ class _ChatScreenState extends State<ChatScreen> {
       final profile = await AuthController.instance.loadCurrentUser();
       if (!mounted) return;
       setState(() {
-        _currentSubject = profile.currentSubject;
+        _currentSubject = _normalizeSubject(profile.currentSubject);
       });
       await _startNewChat();
     } catch (error) {
@@ -254,7 +260,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Current subject: ${_currentSubject.toUpperCase()}',
+                'Current subject: ${_subjectDisplayLabel(_currentSubject)}',
                 style: theme.textTheme.bodySmall,
               ),
               const SizedBox(height: 10),
@@ -262,13 +268,13 @@ class _ChatScreenState extends State<ChatScreen> {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    _SubjectChip(label: 'Coding', selected: _currentSubject == 'coding', onTap: () => _chooseSubject('coding')),
-                    const SizedBox(width: 8),
-                    _SubjectChip(label: 'Math', selected: _currentSubject == 'math', onTap: () => _chooseSubject('math')),
-                    const SizedBox(width: 8),
-                    _SubjectChip(label: 'Physics', selected: _currentSubject == 'physics', onTap: () => _chooseSubject('physics')),
-                    const SizedBox(width: 8),
-                    _SubjectChip(label: 'IELTS', selected: _currentSubject == 'ielts', onTap: () => _chooseSubject('ielts')),
+                    _SubjectChip(
+                      label: 'Code Tutor',
+                      selected:
+                          _currentSubject == 'coding' ||
+                          _currentSubject == 'code tutor',
+                      onTap: () => _chooseSubject('coding'),
+                    ),
                   ],
                 ),
               ),
@@ -323,12 +329,11 @@ class _ChatScreenState extends State<ChatScreen> {
                   maxLines: 4,
                   onSubmitted: (_) => _sendMessage(),
                   decoration: InputDecoration(
-                    hintText: _currentSubject == 'general'
-                        ? 'Select a subject first...'
-                        : 'Ask anything...',
+                    hintText: 'Ask anything...',
                     prefixIcon: const Icon(Icons.chat_outlined),
                     filled: true,
-                    fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+                    fillColor: theme.colorScheme.surfaceContainerHighest
+                        .withValues(alpha: 0.45),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
                       borderSide: BorderSide.none,
@@ -363,7 +368,11 @@ class _ChatMessage {
 }
 
 class _SubjectChip extends StatelessWidget {
-  const _SubjectChip({required this.label, required this.selected, required this.onTap});
+  const _SubjectChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   final String label;
   final bool selected;
@@ -388,7 +397,9 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final bubbleColor = isUser ? theme.colorScheme.primary : theme.colorScheme.surface;
+    final bubbleColor = isUser
+        ? theme.colorScheme.primary
+        : theme.colorScheme.surface;
     final textColor = isUser ? Colors.white : theme.colorScheme.onSurface;
 
     return Align(
@@ -404,7 +415,10 @@ class _MessageBubble extends StatelessWidget {
         ),
         child: Text(
           text,
-          style: theme.textTheme.bodyMedium?.copyWith(color: textColor, height: 1.45),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: textColor,
+            height: 1.45,
+          ),
         ),
       ),
     );
