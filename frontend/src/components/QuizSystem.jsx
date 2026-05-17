@@ -5,6 +5,14 @@ import { toast } from 'react-toastify';
 import { formatDuration, formatDateTime as formatDateTimeUtil } from '../utils/timeUtils';
 
 const QuizSystem = ({ setCurrentView }) => {
+  const normalizeSubject = (subject) => {
+    const value = String(subject || '').trim().toLowerCase();
+    if (!value || value === 'general' || value === 'code tutor') {
+      return 'coding';
+    }
+    return value;
+  };
+  
   const [currentQuiz, setCurrentQuiz] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -43,7 +51,7 @@ const QuizSystem = ({ setCurrentView }) => {
     try {
       setLoading(true);
       const response = await api.post('/api/quiz/create', {
-        subject,
+        subject: normalizeSubject(subject),
         difficulty,
         quiz_type: quizType,
         total_questions: 10,
@@ -67,7 +75,7 @@ const QuizSystem = ({ setCurrentView }) => {
 
       setCurrentQuiz({
         ...quizData,
-        title: quizData.title || questionPayload.title || `${difficulty} ${subject} Quiz`,
+        title: quizData.title || questionPayload.title || `${difficulty} coding Quiz`,
         total_questions: quizData.total_questions || normalizedQuestions.length,
         time_limit: quizData.time_limit || questionPayload.time_limit || 600,
       });
