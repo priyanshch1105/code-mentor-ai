@@ -14,7 +14,7 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   bool _loading = true;
-  String _subject = 'general';
+  String _subject = 'code tutor';
   Map<String, dynamic> _progress = {};
   Map<String, dynamic> _recommendation = {};
   List<Map<String, dynamic>> _quizHistory = [];
@@ -116,7 +116,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             _StatCard(
               label: 'Current',
-              value: _subject.toUpperCase(),
+              value: (_subject == 'general' ? 'code tutor' : _subject)
+                  .toUpperCase(),
               color: colors.secondary,
               icon: Icons.access_time,
             ),
