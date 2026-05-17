@@ -46,7 +46,7 @@ const ProfileScreen = ({ userProfile, userPreferredSubject, currentSubject, onRe
               <p className="theme-muted text-xs uppercase tracking-wide">Preferred Subject</p>
               <p className="mt-2 inline-flex items-center gap-2 font-semibold capitalize">
                 <MdSchool size={18} />
-                {userPreferredSubject || 'general'}
+                {userPreferredSubject || 'coding'}
               </p>
             </div>
 
@@ -54,7 +54,7 @@ const ProfileScreen = ({ userProfile, userPreferredSubject, currentSubject, onRe
               <p className="theme-muted text-xs uppercase tracking-wide">Current Chat Subject</p>
               <p className="mt-2 inline-flex items-center gap-2 font-semibold capitalize">
                 <MdSchool size={18} />
-                {currentSubject || 'general'}
+                {currentSubject || 'coding'}
               </p>
             </div>
           </div>
