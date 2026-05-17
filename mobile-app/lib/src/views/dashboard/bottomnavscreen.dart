@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'chat_screen.dart';
+import 'code_debug_screen.dart';
 
 import 'dashboard_screen.dart';
 import 'home_screen.dart';
 import 'learning_path_screen.dart';
 import 'profile_screen.dart';
+import 'quiz_screen.dart';
 
 class AppShell extends StatefulWidget {
   final VoidCallback onToggleTheme;
@@ -21,12 +23,14 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  int _selectedIndex = 3;
+  int _selectedIndex = 5;
 
   final List<String> _titles = [
     'Home',
     'Dashboard',
     'Learning Path',
+    'Code Debug',
+    'Quiz',
     'Chat',
     'Profile',
   ];
@@ -45,6 +49,8 @@ class _AppShellState extends State<AppShell> {
       const HomeScreen(),
       const DashboardScreen(),
       const LearningPathScreen(),
+      const CodeDebugScreen(),
+      const QuizScreen(),
       const ChatScreen(),
       ProfileScreen(
         isDark: isDark,
@@ -57,9 +63,9 @@ class _AppShellState extends State<AppShell> {
       appBar: AppBar(
         title: Text(
           _titles[_selectedIndex],
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
         ),
         elevation: 1,
         backgroundColor: colors.surface,
@@ -68,10 +74,7 @@ class _AppShellState extends State<AppShell> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
             child: IconButton(
-              icon: Icon(
-                isDark ? Icons.light_mode : Icons.dark_mode,
-                size: 22,
-              ),
+              icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode, size: 22),
               onPressed: widget.onToggleTheme,
               tooltip: 'Toggle theme',
               splashRadius: 24,
@@ -103,6 +106,16 @@ class _AppShellState extends State<AppShell> {
             icon: const Icon(Icons.trending_up_outlined),
             selectedIcon: const Icon(Icons.trending_up),
             label: 'Learning',
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.code_outlined),
+            selectedIcon: const Icon(Icons.code),
+            label: 'Debug',
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.quiz_outlined),
+            selectedIcon: const Icon(Icons.quiz),
+            label: 'Quiz',
           ),
           NavigationDestination(
             icon: const Icon(Icons.chat_outlined),
