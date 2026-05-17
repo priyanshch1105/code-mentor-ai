@@ -120,23 +120,11 @@ const HistoryPanel = ({
   };
 
   const getSubjectIcon = (subject) => {
-    switch (subject) {
-      case 'coding': return <MdCode className="text-green-400" />;
-      case 'math': return <MdCalculate className="text-blue-400" />;
-      case 'ielts': return <MdEdit className="text-purple-400" />;
-      case 'physics': return <MdScience className="text-orange-400" />;
-      default: return <MdMenuBook className="text-gray-400" />;
-    }
+    return <MdCode className="text-green-400" />;
   };
 
   const getSubjectColor = (subject) => {
-    switch (subject) {
-      case 'coding': return 'from-green-500 to-green-600';
-      case 'math': return 'from-blue-500 to-blue-600';
-      case 'ielts': return 'from-purple-500 to-purple-600';
-      case 'physics': return 'from-orange-500 to-orange-600';
-      default: return 'from-gray-500 to-gray-600';
-    }
+    return 'from-green-500 to-green-600';
   };
 
   return (
