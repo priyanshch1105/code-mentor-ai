@@ -50,20 +50,20 @@ def generate_quiz_questions(subject, difficulty, count, llm):
 
     for i in range(count):
         prompt = f"""
-Generate a {difficulty} level {subject} MCQ.
+    Generate a {difficulty} level Code Tutor MCQ focused on programming and coding concepts.
 
-Return JSON:
-{{
- "question_text": "...",
- "question_type": "multiple_choice",
- "options": ["option 1","option 2","option 3","option 4"],
- "correct_answer": "...",
- "explanation": "..."
-}}
-Rules:
-- correct_answer must exactly match one item from options.
-- Do not include markdown or text outside JSON.
-"""
+    Return JSON:
+    {{
+     "question_text": "...",
+     "question_type": "multiple_choice",
+     "options": ["option 1","option 2","option 3","option 4"],
+     "correct_answer": "...",
+     "explanation": "..."
+    }}
+    Rules:
+    - correct_answer must exactly match one item from options.
+    - Do not include markdown or text outside JSON.
+    """
 
         try:
             res = llm.generate_response(prompt)
@@ -79,6 +79,14 @@ Rules:
             questions.append(fallback_question(subject, i))
 
     return questions
+
+
+def normalize_subject(subject_str: str) -> str:
+    s = (subject_str or '').lower().strip()
+    if any(k in s for k in ('code tutor', 'code-tutor', 'coding', 'code')):
+        return 'code tutor'
+    # default to code tutor for all other subjects
+    return 'code tutor'
 
 
 def normalize_question(question, subject):
@@ -107,17 +115,17 @@ def normalize_question(question, subject):
 def fallback_question(subject, index=0):
     fallback_questions = [
         {
-            "question_text": f"What is a core concept in {subject}?",
-            "options": ["A basic principle", "A random guess", "An unrelated topic", "None of these"],
-            "correct_answer": "A basic principle",
+            "question_text": "What is a fundamental concept in programming?",
+            "options": ["Write small functions", "Ignore errors", "Copy-paste code", "Avoid testing"],
+            "correct_answer": "Write small functions",
         },
         {
-            "question_text": f"What is the best first step when learning {subject}?",
-            "options": ["Understand basics", "Skip practice", "Memorize randomly", "Avoid examples"],
-            "correct_answer": "Understand basics",
+            "question_text": "What is a good first step when learning a new programming topic?",
+            "options": ["Understand basics and practice", "Skip practice", "Memorize randomly", "Avoid examples"],
+            "correct_answer": "Understand basics and practice",
         },
         {
-            "question_text": f"Why should you practice {subject} questions?",
+            "question_text": "Why should you practice coding problems?",
             "options": ["To build skill", "To avoid learning", "To forget concepts", "To waste time"],
             "correct_answer": "To build skill",
         },
@@ -202,11 +210,11 @@ def create_quiz(
     if difficulty not in {"beginner", "intermediate", "advanced"}:
         raise HTTPException(status_code=422, detail="difficulty must be beginner, intermediate, or advanced")
 
-    subject = body.subject.lower().strip()
+    subject = normalize_subject(body.subject)
     quiz = Quiz(
         user_id=current_user.id,
         subject=subject,
-        title=f"{difficulty.title()} {subject.title()} Quiz",
+        title=f"{difficulty.title()} Code Tutor Quiz",
         difficulty=difficulty,
         quiz_type=body.quiz_type,
         total_questions=body.total_questions,
@@ -420,16 +428,15 @@ def get_quiz_recommendations(
     if not progress:
         return {
             "recommendations": [
-                {"subject": "math", "difficulty": "beginner", "quiz_type": "mixed", "reason": "Start with Basic Math"},
-                {"subject": "coding", "difficulty": "beginner", "quiz_type": "mixed", "reason": "Start with Coding Basics"},
-                {"subject": "physics", "difficulty": "beginner", "quiz_type": "mixed", "reason": "Start with Physics Basics"},
-                {"subject": "ielts", "difficulty": "beginner", "quiz_type": "mixed", "reason": "Start with IELTS Preparation"}
+                {"subject": "code tutor", "difficulty": "beginner", "quiz_type": "mixed", "reason": "Start with Code Tutor — programming basics"}
             ],
             "message": "Complete quizzes to get personalized recommendations"
         }
     
     # Find weakest subject
-    weakest_subject = min(progress, key=progress.get) if progress else "general"
+    # Prefer recommending Code Tutor; filter progress to only known Code Tutor key
+    filtered_keys = [k for k in progress.keys() if 'code' in k]
+    weakest_subject = filtered_keys[0] if filtered_keys else 'code tutor'
     weakest_score = progress.get(weakest_subject, 0)
     
     recommendations = []
@@ -445,6 +452,9 @@ def get_quiz_recommendations(
     
     # Recommend advancing in strong areas
     for subject, score in progress.items():
+        # only surface Code Tutor related progression
+        if 'code' not in subject:
+            continue
         if score >= 70 and subject != weakest_subject:
             difficulty = "advanced" if score >= 85 else "intermediate"
             recommendations.append({
