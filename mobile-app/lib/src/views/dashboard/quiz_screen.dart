@@ -25,6 +25,18 @@ class _QuizScreenState extends State<QuizScreen> {
   int _currentIndex = 0;
   Map<String, dynamic>? _result;
 
+  String _normalizeSubject(String? subject) {
+    final value = (subject ?? '').trim().toLowerCase();
+    if (value.isEmpty || value == 'general' || value == 'code tutor') {
+      return 'coding';
+    }
+    return value;
+  }
+
+  String _subjectDisplayLabel(String subject) {
+    return subject == 'coding' ? 'CODE TUTOR' : subject.toUpperCase();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -34,13 +46,22 @@ class _QuizScreenState extends State<QuizScreen> {
   Future<void> _bootstrap() async {
     try {
       final profile = await AuthController.instance.loadCurrentUser();
-      final recommendations = await ChatController.instance.getQuizRecommendations();
+      final recommendations = await ChatController.instance
+          .getQuizRecommendations();
       final history = await ChatController.instance.getQuizHistory();
       if (!mounted) return;
       setState(() {
-        _subject = profile.currentSubject == 'general' ? 'coding' : profile.currentSubject;
-        _quizRecommendations = List<Map<String, dynamic>>.from(recommendations['recommendations'] is List ? recommendations['recommendations'] as List : const []);
-        _quizHistory = List<Map<String, dynamic>>.from(history['quiz_history'] is List ? history['quiz_history'] as List : const []);
+        _subject = _normalizeSubject(profile.currentSubject);
+        _quizRecommendations = List<Map<String, dynamic>>.from(
+          recommendations['recommendations'] is List
+              ? recommendations['recommendations'] as List
+              : const [],
+        );
+        _quizHistory = List<Map<String, dynamic>>.from(
+          history['quiz_history'] is List
+              ? history['quiz_history'] as List
+              : const [],
+        );
         _loading = false;
       });
     } catch (_) {
@@ -50,12 +71,21 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   Future<void> _refreshSidebarData() async {
-    final recommendations = await ChatController.instance.getQuizRecommendations();
+    final recommendations = await ChatController.instance
+        .getQuizRecommendations();
     final history = await ChatController.instance.getQuizHistory();
     if (!mounted) return;
     setState(() {
-      _quizRecommendations = List<Map<String, dynamic>>.from(recommendations['recommendations'] is List ? recommendations['recommendations'] as List : const []);
-      _quizHistory = List<Map<String, dynamic>>.from(history['quiz_history'] is List ? history['quiz_history'] as List : const []);
+      _quizRecommendations = List<Map<String, dynamic>>.from(
+        recommendations['recommendations'] is List
+            ? recommendations['recommendations'] as List
+            : const [],
+      );
+      _quizHistory = List<Map<String, dynamic>>.from(
+        history['quiz_history'] is List
+            ? history['quiz_history'] as List
+            : const [],
+      );
     });
   }
 
@@ -64,18 +94,24 @@ class _QuizScreenState extends State<QuizScreen> {
     setState(() => _creating = true);
     try {
       final quiz = await ChatController.instance.createQuiz(
-        subject: _subject,
+        subject: _normalizeSubject(_subject),
         difficulty: _difficulty,
       );
       final quizId = quiz['quiz_id'] as int?;
       if (quizId == null) {
         throw Exception('Quiz id missing from response');
       }
-      final questionsResponse = await ChatController.instance.getQuizQuestions(quizId);
+      final questionsResponse = await ChatController.instance.getQuizQuestions(
+        quizId,
+      );
       if (!mounted) return;
       setState(() {
         _activeQuiz = quiz;
-        _questions = List<Map<String, dynamic>>.from(questionsResponse['questions'] is List ? questionsResponse['questions'] as List : const []);
+        _questions = List<Map<String, dynamic>>.from(
+          questionsResponse['questions'] is List
+              ? questionsResponse['questions'] as List
+              : const [],
+        );
         _answers.clear();
         _currentIndex = 0;
         _result = null;
@@ -160,11 +196,17 @@ class _QuizScreenState extends State<QuizScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: _MetaBox(label: 'Subject', value: _subject.toUpperCase()),
+                    child: _MetaBox(
+                      label: 'Subject',
+                      value: _subjectDisplayLabel(_subject),
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: _MetaBox(label: 'Difficulty', value: _difficulty.toUpperCase()),
+                    child: _MetaBox(
+                      label: 'Difficulty',
+                      value: _difficulty.toUpperCase(),
+                    ),
                   ),
                 ],
               ),
@@ -173,7 +215,11 @@ class _QuizScreenState extends State<QuizScreen> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  ChoiceChip(label: const Text('Code Tutor'), selected: _subject == 'code tutor', onSelected: (_) => setState(() => _subject = 'code tutor')),
+                  ChoiceChip(
+                    label: const Text('Code Tutor'),
+                    selected: _normalizeSubject(_subject) == 'coding',
+                    onSelected: (_) => setState(() => _subject = 'coding'),
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
@@ -181,9 +227,22 @@ class _QuizScreenState extends State<QuizScreen> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  ChoiceChip(label: const Text('Beginner'), selected: _difficulty == 'beginner', onSelected: (_) => setState(() => _difficulty = 'beginner')),
-                  ChoiceChip(label: const Text('Intermediate'), selected: _difficulty == 'intermediate', onSelected: (_) => setState(() => _difficulty = 'intermediate')),
-                  ChoiceChip(label: const Text('Advanced'), selected: _difficulty == 'advanced', onSelected: (_) => setState(() => _difficulty = 'advanced')),
+                  ChoiceChip(
+                    label: const Text('Beginner'),
+                    selected: _difficulty == 'beginner',
+                    onSelected: (_) => setState(() => _difficulty = 'beginner'),
+                  ),
+                  ChoiceChip(
+                    label: const Text('Intermediate'),
+                    selected: _difficulty == 'intermediate',
+                    onSelected: (_) =>
+                        setState(() => _difficulty = 'intermediate'),
+                  ),
+                  ChoiceChip(
+                    label: const Text('Advanced'),
+                    selected: _difficulty == 'advanced',
+                    onSelected: (_) => setState(() => _difficulty = 'advanced'),
+                  ),
                 ],
               ),
               const SizedBox(height: 10),
@@ -200,28 +259,55 @@ class _QuizScreenState extends State<QuizScreen> {
               ),
               const SizedBox(height: 8),
               FilledButton.icon(
-                onPressed: _creating ? null : () async {
-                  // create a local mock quiz for testing without backend
-                  setState(() => _creating = true);
-                  try {
-                    final mockQuiz = {'quiz_id': -1, 'title': 'Code Tutor — Test Quiz', 'total_questions': 3, 'time_limit': 600};
-                    final mockQuestions = [
-                      {'id': 1001, 'question_text': 'What does HTTP stand for?', 'options': ['HyperText Transfer Protocol', 'Hyperlink Transfer Protocol', 'HyperText Transmission Protocol']},
-                      {'id': 1002, 'question_text': 'Which language is primarily used for Flutter?', 'options': ['Dart', 'Kotlin', 'Swift']},
-                      {'id': 1003, 'question_text': 'Explain what a promise is in JavaScript.', 'options': []},
-                    ];
-                    if (!mounted) return;
-                    setState(() {
-                      _activeQuiz = mockQuiz;
-                      _questions = List<Map<String, dynamic>>.from(mockQuestions);
-                      _answers.clear();
-                      _currentIndex = 0;
-                      _result = null;
-                    });
-                  } finally {
-                    if (mounted) setState(() => _creating = false);
-                  }
-                },
+                onPressed: _creating
+                    ? null
+                    : () async {
+                        // create a local mock quiz for testing without backend
+                        setState(() => _creating = true);
+                        try {
+                          final mockQuiz = {
+                            'quiz_id': -1,
+                            'title': 'Code Tutor — Test Quiz',
+                            'total_questions': 3,
+                            'time_limit': 600,
+                          };
+                          final mockQuestions = [
+                            {
+                              'id': 1001,
+                              'question_text': 'What does HTTP stand for?',
+                              'options': [
+                                'HyperText Transfer Protocol',
+                                'Hyperlink Transfer Protocol',
+                                'HyperText Transmission Protocol',
+                              ],
+                            },
+                            {
+                              'id': 1002,
+                              'question_text':
+                                  'Which language is primarily used for Flutter?',
+                              'options': ['Dart', 'Kotlin', 'Swift'],
+                            },
+                            {
+                              'id': 1003,
+                              'question_text':
+                                  'Explain what a promise is in JavaScript.',
+                              'options': [],
+                            },
+                          ];
+                          if (!mounted) return;
+                          setState(() {
+                            _activeQuiz = mockQuiz;
+                            _questions = List<Map<String, dynamic>>.from(
+                              mockQuestions,
+                            );
+                            _answers.clear();
+                            _currentIndex = 0;
+                            _result = null;
+                          });
+                        } finally {
+                          if (mounted) setState(() => _creating = false);
+                        }
+                      },
                 icon: const Icon(Icons.bug_report_outlined),
                 label: const Text('Use Test Data'),
               ),
@@ -259,13 +345,20 @@ class _QuizScreenState extends State<QuizScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                ...List<String>.from(_currentQuestion!['options'] is List ? _currentQuestion!['options'] as List : const []).map(
+                ...List<String>.from(
+                  _currentQuestion!['options'] is List
+                      ? _currentQuestion!['options'] as List
+                      : const [],
+                ).map(
                   (option) => Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: _OptionCard(
                       text: option,
-                      selected: _answers[_currentQuestion!['id'] as int] == option,
-                      onTap: () => setState(() => _answers[_currentQuestion!['id'] as int] = option),
+                      selected:
+                          _answers[_currentQuestion!['id'] as int] == option,
+                      onTap: () => setState(
+                        () => _answers[_currentQuestion!['id'] as int] = option,
+                      ),
                     ),
                   ),
                 ),
@@ -273,7 +366,9 @@ class _QuizScreenState extends State<QuizScreen> {
                 Row(
                   children: [
                     OutlinedButton(
-                      onPressed: _currentIndex == 0 ? null : () => setState(() => _currentIndex -= 1),
+                      onPressed: _currentIndex == 0
+                          ? null
+                          : () => setState(() => _currentIndex -= 1),
                       child: const Text('Previous'),
                     ),
                     const Spacer(),
@@ -289,7 +384,9 @@ class _QuizScreenState extends State<QuizScreen> {
                             ? const SizedBox(
                                 width: 18,
                                 height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Text('Submit'),
                       ),
@@ -331,13 +428,17 @@ class _QuizScreenState extends State<QuizScreen> {
               ),
               const SizedBox(height: 10),
               if (_quizRecommendations.isEmpty)
-                Text('Complete quizzes to get personalized recommendations.', style: theme.textTheme.bodyMedium)
+                Text(
+                  'Complete quizzes to get personalized recommendations.',
+                  style: theme.textTheme.bodyMedium,
+                )
               else
                 ..._quizRecommendations.map(
                   (item) => Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: _RecommendationItem(
-                      title: '${item['subject']?.toString() ?? 'Quiz'} • ${item['difficulty']?.toString() ?? 'beginner'}',
+                      title:
+                          '${item['subject']?.toString() ?? 'Quiz'} • ${item['difficulty']?.toString() ?? 'beginner'}',
                       subtitle: item['reason']?.toString() ?? '',
                     ),
                   ),
@@ -364,7 +465,9 @@ class _QuizScreenState extends State<QuizScreen> {
                   (entry) => ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text(entry['title']?.toString() ?? 'Quiz'),
-                    subtitle: Text('${entry['subject']?.toString() ?? 'general'} • ${entry['percentage']?.toString() ?? '--'}%'),
+                    subtitle: Text(
+                      '${entry['subject']?.toString() ?? 'code tutor'} • ${entry['percentage']?.toString() ?? '--'}%',
+                    ),
                   ),
                 ),
             ],
