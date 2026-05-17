@@ -42,7 +42,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _username = profile.username;
         _email = profile.email;
         _subject = profile.currentSubject;
-        _progress = Map<String, dynamic>.from(progress['progress'] is Map ? progress['progress'] as Map : {});
+        _progress = Map<String, dynamic>.from(
+          progress['progress'] is Map ? progress['progress'] as Map : {},
+        );
         _loading = false;
       });
     } catch (_) {
@@ -78,35 +80,72 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 26,
-                    child: Text(
-                      _username.isNotEmpty ? _username[0].toUpperCase() : '?',
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isCompact = constraints.maxWidth < 420;
+                  final header = Row(
                     children: [
-                      Text(
-                        _username,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
+                      CircleAvatar(
+                        radius: 26,
+                        child: Text(
+                          _username.isNotEmpty
+                              ? _username[0].toUpperCase()
+                              : '?',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
                       ),
-                      Text(_email.isEmpty ? '@user' : _email, style: theme.textTheme.bodySmall),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _username,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              _email.isEmpty ? '@user' : _email,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
-                  ),
-                  const Spacer(),
-                  OutlinedButton.icon(
-                    onPressed: _bootstrap,
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Refresh'),
-                  ),
-                ],
+                  );
+
+                  if (isCompact) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        header,
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          onPressed: _bootstrap,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Refresh'),
+                        ),
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    children: [
+                      header,
+                      const SizedBox(width: 12),
+                      OutlinedButton.icon(
+                        onPressed: _bootstrap,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Refresh'),
+                      ),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 14),
               _InfoTile(
@@ -117,39 +156,65 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _InfoTile(
                 icon: Icons.analytics_outlined,
                 label: 'Tracked Subjects',
-                value: _progress.isEmpty ? 'No progress yet' : _progress.keys.join(', '),
+                value: _progress.isEmpty
+                    ? 'No progress yet'
+                    : _progress.keys.join(', '),
               ),
             ],
           ),
         ),
         const SizedBox(height: 12),
         SectionCard(
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isCompact = constraints.maxWidth < 420;
+              final content = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Appearance',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Current mode: ${widget.isDark ? 'Dark' : 'Light'}',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              );
+
+              if (isCompact) {
+                return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Appearance',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
+                    content,
+                    const SizedBox(height: 12),
+                    FilledButton.tonalIcon(
+                      onPressed: widget.onThemeToggle,
+                      icon: Icon(
+                        widget.isDark ? Icons.light_mode : Icons.dark_mode,
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Current mode: ${widget.isDark ? 'Dark' : 'Light'}',
-                      style: theme.textTheme.bodySmall,
+                      label: const Text('Toggle Theme'),
                     ),
                   ],
-                ),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: widget.onThemeToggle,
-                icon: Icon(widget.isDark ? Icons.light_mode : Icons.dark_mode),
-                label: const Text('Toggle Theme'),
-              ),
-            ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(child: content),
+                  FilledButton.tonalIcon(
+                    onPressed: widget.onThemeToggle,
+                    icon: Icon(
+                      widget.isDark ? Icons.light_mode : Icons.dark_mode,
+                    ),
+                    label: const Text('Toggle Theme'),
+                  ),
+                ],
+              );
+            },
           ),
         ),
         const SizedBox(height: 12),
@@ -168,10 +233,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  ChoiceChip(label: const Text('Coding'), selected: _subject == 'coding', onSelected: (_) => _setSubject('coding')),
-                  ChoiceChip(label: const Text('Math'), selected: _subject == 'math', onSelected: (_) => _setSubject('math')),
-                  ChoiceChip(label: const Text('Physics'), selected: _subject == 'physics', onSelected: (_) => _setSubject('physics')),
-                  ChoiceChip(label: const Text('IELTS'), selected: _subject == 'ielts', onSelected: (_) => _setSubject('ielts')),
+                  ChoiceChip(
+                    label: const Text('Coding'),
+                    selected: _subject == 'coding',
+                    onSelected: (_) => _setSubject('coding'),
+                  ),
+                  ChoiceChip(
+                    label: const Text('Math'),
+                    selected: _subject == 'math',
+                    onSelected: (_) => _setSubject('math'),
+                  ),
+                  ChoiceChip(
+                    label: const Text('Physics'),
+                    selected: _subject == 'physics',
+                    onSelected: (_) => _setSubject('physics'),
+                  ),
+                  ChoiceChip(
+                    label: const Text('IELTS'),
+                    selected: _subject == 'ielts',
+                    onSelected: (_) => _setSubject('ielts'),
+                  ),
                 ],
               ),
             ],

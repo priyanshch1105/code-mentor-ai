@@ -29,14 +29,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final profile = await AuthController.instance.loadCurrentUser();
       final progressResponse = await ChatController.instance.getProgress();
-      final recommendation = await ChatController.instance.getQuizRecommendations();
+      final recommendation = await ChatController.instance
+          .getQuizRecommendations();
       final quizHistory = await ChatController.instance.getQuizHistory();
       if (!mounted) return;
       setState(() {
         _subject = profile.currentSubject;
-        _progress = Map<String, dynamic>.from(progressResponse['progress'] is Map ? progressResponse['progress'] as Map : {});
+        _progress = Map<String, dynamic>.from(
+          progressResponse['progress'] is Map
+              ? progressResponse['progress'] as Map
+              : {},
+        );
         _recommendation = Map<String, dynamic>.from(recommendation);
-        _quizHistory = List<Map<String, dynamic>>.from(quizHistory['quiz_history'] is List ? quizHistory['quiz_history'] as List : const []);
+        _quizHistory = List<Map<String, dynamic>>.from(
+          quizHistory['quiz_history'] is List
+              ? quizHistory['quiz_history'] as List
+              : const [],
+        );
         _loading = false;
       });
     } catch (_) {
@@ -46,7 +55,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   double _averageProgress() {
-    final values = _progress.values.whereType<num>().map((value) => value.toDouble()).toList();
+    final values = _progress.values
+        .whereType<num>()
+        .map((value) => value.toDouble())
+        .toList();
     if (values.isEmpty) return 0;
     return (values.reduce((a, b) => a + b) / values.length / 100).clamp(0, 1);
   }
@@ -96,7 +108,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             _StatCard(
               label: 'Recent Quiz',
-              value: recentQuiz == null ? '--' : _formatQuizPercent(recentQuiz['percentage']),
+              value: recentQuiz == null
+                  ? '--'
+                  : _formatQuizPercent(recentQuiz['percentage']),
               color: colors.warning,
               icon: Icons.quiz,
             ),
@@ -121,7 +135,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               const SizedBox(height: 10),
               if (_progress.isEmpty)
-                Text('Progress will appear after you complete chat or quiz sessions.', style: theme.textTheme.bodyMedium)
+                Text(
+                  'Progress will appear after you complete chat or quiz sessions.',
+                  style: theme.textTheme.bodyMedium,
+                )
               else
                 ..._progress.entries.map(
                   (entry) => _BarRow(
@@ -146,7 +163,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                _recommendation['recommendations']?.toString() ?? 'Keep moving with one study session and one quiz today.',
+                _recommendation['recommendations']?.toString() ??
+                    'Keep moving with one study session and one quiz today.',
                 style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(height: 10),
@@ -187,11 +205,17 @@ class _StatCard extends StatelessWidget {
             children: [
               Icon(icon, color: color, size: 20),
               const Spacer(),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -230,7 +254,11 @@ class _BarRow extends StatelessWidget {
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
-              Text('${(value * 100).toStringAsFixed(0)}%'),
+              const SizedBox(width: 8),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text('${(value * 100).toStringAsFixed(0)}%'),
+              ),
             ],
           ),
           const SizedBox(height: 6),
