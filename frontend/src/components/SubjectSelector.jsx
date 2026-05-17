@@ -3,7 +3,7 @@ import api from '../services/api';
 import { toast } from 'react-toastify';
 
 const SubjectSelector = ({ setShowSubjectModal, updateCurrentSubject, onSubjectChange, onModalClose, context = 'chat' }) => {
-  const [subject, setSubject] = useState('');
+  const [subject, setSubject] = useState('coding');
 
   const handleSelect = async () => {
     if (!subject) {
@@ -14,14 +14,14 @@ const SubjectSelector = ({ setShowSubjectModal, updateCurrentSubject, onSubjectC
       // Only update backend if context is 'chat' (for new chats)
       // For recommendations, we just update local state
       if (context === 'chat') {
-        await api.post('/api/auth/select-subject', { subject: subject });
+        await api.post('/api/auth/select-subject', { subject: 'coding' });
         const userRes = await api.get('/api/auth/me');
-        const newSubject = userRes.data.current_subject;
+        const newSubject = userRes.data.current_subject || 'coding';
         updateCurrentSubject(newSubject);
         toast.success('Chat subject set successfully!');
       } else {
         // Just update recommendation subject locally
-        updateCurrentSubject(subject);
+        updateCurrentSubject('coding');
         toast.success('Recommendation focus updated!');
       }
       
@@ -39,13 +39,13 @@ const SubjectSelector = ({ setShowSubjectModal, updateCurrentSubject, onSubjectC
   const getModalTitle = () => {
     if (context === 'chat') {
       return {
-        title: 'Select Chat Subject',
-        subtitle: 'Choose a subject for this chat session'
+          title: 'Select Chat Subject',
+          subtitle: 'Coding is the active study subject for this app'
       };
     } else {
       return {
         title: 'Select Learning Focus',
-        subtitle: 'Choose a subject for AI recommendations'
+        subtitle: 'Coding drives AI recommendations in this app'
       };
     }
   };
@@ -69,11 +69,7 @@ const SubjectSelector = ({ setShowSubjectModal, updateCurrentSubject, onSubjectC
           onChange={e => setSubject(e.target.value)} 
           className="w-full mb-4 p-3 bg-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option value="">Choose one</option>
-          <option value="math">Math</option>
           <option value="coding">Coding</option>
-          <option value="ielts">IELTS</option>
-          <option value="physics">Physics</option>
         </select>
         <div className="flex justify-between">
           <button onClick={handleSelect} className="bg-blue-500 hover:bg-blue-600 p-3 rounded-md text-white flex-1 mr-2 transition">Set</button>
