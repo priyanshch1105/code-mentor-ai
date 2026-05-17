@@ -15,7 +15,7 @@ class _QuizScreenState extends State<QuizScreen> {
   bool _loading = true;
   bool _creating = false;
   bool _submitting = false;
-  String _subject = 'coding';
+  String _subject = 'code tutor';
   String _difficulty = 'beginner';
   List<Map<String, dynamic>> _quizRecommendations = [];
   List<Map<String, dynamic>> _quizHistory = [];
@@ -173,10 +173,7 @@ class _QuizScreenState extends State<QuizScreen> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  ChoiceChip(label: const Text('Coding'), selected: _subject == 'coding', onSelected: (_) => setState(() => _subject = 'coding')),
-                  ChoiceChip(label: const Text('Math'), selected: _subject == 'math', onSelected: (_) => setState(() => _subject = 'math')),
-                  ChoiceChip(label: const Text('Physics'), selected: _subject == 'physics', onSelected: (_) => setState(() => _subject = 'physics')),
-                  ChoiceChip(label: const Text('IELTS'), selected: _subject == 'ielts', onSelected: (_) => setState(() => _subject = 'ielts')),
+                  ChoiceChip(label: const Text('Code Tutor'), selected: _subject == 'code tutor', onSelected: (_) => setState(() => _subject = 'code tutor')),
                 ],
               ),
               const SizedBox(height: 8),
@@ -200,6 +197,33 @@ class _QuizScreenState extends State<QuizScreen> {
                       )
                     : const Icon(Icons.quiz_outlined),
                 label: const Text('Create Quiz'),
+              ),
+              const SizedBox(height: 8),
+              FilledButton.icon(
+                onPressed: _creating ? null : () async {
+                  // create a local mock quiz for testing without backend
+                  setState(() => _creating = true);
+                  try {
+                    final mockQuiz = {'quiz_id': -1, 'title': 'Code Tutor — Test Quiz', 'total_questions': 3, 'time_limit': 600};
+                    final mockQuestions = [
+                      {'id': 1001, 'question_text': 'What does HTTP stand for?', 'options': ['HyperText Transfer Protocol', 'Hyperlink Transfer Protocol', 'HyperText Transmission Protocol']},
+                      {'id': 1002, 'question_text': 'Which language is primarily used for Flutter?', 'options': ['Dart', 'Kotlin', 'Swift']},
+                      {'id': 1003, 'question_text': 'Explain what a promise is in JavaScript.', 'options': []},
+                    ];
+                    if (!mounted) return;
+                    setState(() {
+                      _activeQuiz = mockQuiz;
+                      _questions = List<Map<String, dynamic>>.from(mockQuestions);
+                      _answers.clear();
+                      _currentIndex = 0;
+                      _result = null;
+                    });
+                  } finally {
+                    if (mounted) setState(() => _creating = false);
+                  }
+                },
+                icon: const Icon(Icons.bug_report_outlined),
+                label: const Text('Use Test Data'),
               ),
             ],
           ),
