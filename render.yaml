@@ -13,6 +13,10 @@ services:
         value: production
       - key: DEBUG
         value: "false"
+      - key: AI_MODEL
+        value: openai/gpt-oss-120b
+      - key: AI_FALLBACK_MODELS
+        value: llama-3.3-70b-versatile,llama-3.1-8b-instant
       - key: SECRET_KEY
         generateValue: true
       - key: GROQ_API_KEY

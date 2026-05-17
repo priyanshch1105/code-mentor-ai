@@ -89,6 +89,8 @@ setup_backend() {
         cat > .env << EOF
 DB_PASSWORD=your_postgres_password_here
 SECRET_KEY=your_jwt_secret_key_here_make_it_long_and_random
+    AI_MODEL=openai/gpt-oss-120b
+    AI_FALLBACK_MODELS=llama-3.3-70b-versatile,llama-3.1-8b-instant
 EOF
         print_warning "Please update the .env file with your actual database password and secret key"
     fi
