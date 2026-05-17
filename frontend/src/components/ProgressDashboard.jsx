@@ -36,6 +36,7 @@ const emptyStats = {
 };
 
 const ProgressDashboard = ({ setShowProgressModal, setCurrentView, userPreferredSubject }) => {
+  const normalizedSubject = String(userPreferredSubject || '').trim().toLowerCase();
   const [recommendations, setRecommendations] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -58,8 +59,8 @@ const ProgressDashboard = ({ setShowProgressModal, setCurrentView, userPreferred
       setRefreshing(true);
 
       const recommendationParams =
-        userPreferredSubject && userPreferredSubject !== 'general'
-          ? { subject: userPreferredSubject }
+        normalizedSubject && normalizedSubject !== 'coding'
+          ? { subject: normalizedSubject }
           : {};
 
       const [progressData, recommendData, sessionsData, quizHistoryData] = await Promise.all([
@@ -134,7 +135,7 @@ const ProgressDashboard = ({ setShowProgressModal, setCurrentView, userPreferred
 
   const subjectCounts = useMemo(() => {
     return sessions.reduce((acc, session) => {
-      const subject = session.subject || 'general';
+      const subject = session.subject || 'coding';
       acc[subject] = (acc[subject] || 0) + 1;
       return acc;
     }, {});
@@ -190,9 +191,9 @@ const ProgressDashboard = ({ setShowProgressModal, setCurrentView, userPreferred
             <div className="min-w-0">
               <h2 className="truncate text-lg font-bold lg:text-2xl">Learning Dashboard</h2>
               <p className="truncate text-xs theme-muted">
-                {userPreferredSubject && userPreferredSubject !== 'general'
-                  ? `Focus: ${userPreferredSubject}`
-                  : 'Progress from chats, subjects, and quizzes'}
+                {normalizedSubject && normalizedSubject !== 'coding'
+                  ? `Focus: ${normalizedSubject}`
+                  : 'Progress from chats, coding, and quizzes'}
               </p>
             </div>
           </div>
@@ -320,9 +321,9 @@ const ProgressDashboard = ({ setShowProgressModal, setCurrentView, userPreferred
                     <MdTrendingUp className="text-blue-500" />
                     AI Recommendations
                   </h3>
-                  {userPreferredSubject && userPreferredSubject !== 'general' && (
+                  {normalizedSubject && normalizedSubject !== 'coding' && (
                     <span className="rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white">
-                      Focus: {userPreferredSubject}
+                      Focus: {normalizedSubject}
                     </span>
                   )}
                 </div>
