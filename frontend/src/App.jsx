@@ -29,6 +29,14 @@ const ProtectedRoute = ({ children, isLoggedIn }) => {
 };
 
 function App() {
+  const normalizeSubject = (subject) => {
+    const value = String(subject || '').trim().toLowerCase();
+    if (!value || value === 'general' || value === 'code tutor') {
+      return 'coding';
+    }
+    return value;
+  };
+
   const { theme, toggleTheme } = useTheme();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -42,8 +50,8 @@ function App() {
   const [currentSessionId, setCurrentSessionId] = useState(null);
   const [sessionName, setSessionName] = useState('New Chat');
   const [responseLoading, setResponseLoading] = useState(false);
-  const [currentSubject, setCurrentSubject] = useState('general'); // Chat ka subject
-  const [userPreferredSubject, setUserPreferredSubject] = useState('general'); // User ka default subject (for recommendations)
+  const [currentSubject, setCurrentSubject] = useState('coding'); // Chat ka subject
+  const [userPreferredSubject, setUserPreferredSubject] = useState('coding'); // User ka default subject (for recommendations)
   const [page, setPage] = useState(1);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [subjectModalContext, setSubjectModalContext] = useState('chat'); // 'chat' or 'recommendation'
@@ -59,7 +67,7 @@ function App() {
             setIsLoggedIn(true);
             api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
             const userRes = await api.get('/api/auth/me');
-            const userSubject = userRes.data.current_subject || 'general';
+            const userSubject = normalizeSubject(userRes.data.current_subject || 'coding');
             setUserProfile(userRes.data);
             setUserPreferredSubject(userSubject); // User ka preferred subject
             setCurrentSubject(userSubject); // Initial chat subject bhi same
@@ -68,7 +76,7 @@ function App() {
             const stored = JSON.parse(localStorage.getItem(`appState_${userId}`) || '{}');
             if (stored.sessionId) {
               setCurrentSessionId(stored.sessionId);
-              setCurrentSubject(stored.subject || userSubject);
+              setCurrentSubject(normalizeSubject(stored.subject || userSubject));
               // Load messages on initial mount only
               const loaded = await loadMessages(stored.sessionId, 1);
               if (!loaded) {
@@ -76,10 +84,6 @@ function App() {
               } else {
                 setIsInitialLoad(false);
               }
-            } else if (userSubject === 'general') {
-              setSubjectModalContext('chat'); // Context: for new chat
-              setShowSubjectModal(true);
-              setIsInitialLoad(false);
             }
           } else {
             clearLocalStorage();
@@ -155,7 +159,7 @@ function App() {
       
       const sessionRes = await api.get(`/api/sessions/${sessionId}`);
       const sessionName = sessionRes.data.name || 'New Chat';
-      const sessionSubject = sessionRes.data.subject || currentSubject;
+      const sessionSubject = normalizeSubject(sessionRes.data.subject || currentSubject);
       
       setSessionName(sessionName);
       setCurrentSubject(sessionSubject);
@@ -173,11 +177,6 @@ function App() {
 
   const sendMessage = useCallback(async (text) => {
     if (!text) return;
-    if (currentSubject === 'general') {
-      toast.warning('First select your subject!');
-      setShowSubjectModal(true);
-      return;
-    }
     setResponseLoading(true);
     setIsInitialLoad(false); // Mark as no longer initial load after first message
     try {
@@ -190,7 +189,7 @@ function App() {
       });
       let sessionId = currentSessionId;
       if (!sessionId) {
-        const createRes = await api.post('/api/sessions/create', { subject: currentSubject });
+        const createRes = await api.post('/api/sessions/create', { subject: normalizeSubject(currentSubject) });
         sessionId = createRes.data.session_id;
         setCurrentSessionId(sessionId);
       }
@@ -212,10 +211,10 @@ function App() {
         setSessionName(res.data.session_name || 'Chat Session');
       }
       const sessionRes = await api.get(`/api/sessions/${sessionId}`);
-      setCurrentSubject(sessionRes.data.subject);
+      setCurrentSubject(normalizeSubject(sessionRes.data.subject));
       
       // Persist the sessionId explicitly (important for new chats)
-      persistData(sessionId, sessionRes.data.subject);
+      persistData(sessionId, normalizeSubject(sessionRes.data.subject));
     } catch (err) {
       toast.error('Chat Error: ' + (err.response?.data?.detail || err.message));
       // If session was created, persist it even on error
@@ -252,7 +251,7 @@ function App() {
     }
     setMessages([]);
     setCurrentSessionId(null);
-    setCurrentSubject('general');
+    setCurrentSubject('coding');
     setSessionName('New Chat');
     setUserProfile(null);
     setPage(1);
@@ -263,7 +262,7 @@ function App() {
     try {
       const userRes = await api.get('/api/auth/me');
       setUserProfile(userRes.data);
-      const userSubject = userRes.data.current_subject || 'general';
+      const userSubject = normalizeSubject(userRes.data.current_subject || 'coding');
       setUserPreferredSubject(userSubject);
       toast.success('Profile refreshed.');
     } catch (err) {
@@ -277,20 +276,12 @@ function App() {
     setSessionName('New Chat');
     setPage(1);
     setIsInitialLoad(true);
-    
-    // Reset subject to general for new chat
-    setCurrentSubject('general');
-    
-    // Always force subject selection for a new chat
-    setSubjectModalContext('chat'); // Context: for chat
-    setShowSubjectModal(true);
-    
-    // Clear localStorage when starting new chat (no session yet)
-    persistData(null, 'general');
+    setCurrentSubject('coding');
+    persistData(null, 'coding');
   };
 
   const updateCurrentSubject = (newSubject) => {
-    setCurrentSubject(newSubject);
+    setCurrentSubject(normalizeSubject(newSubject));
     // Pass the newSubject explicitly to avoid state update delay
     persistData(currentSessionId, newSubject);
   };
@@ -572,7 +563,7 @@ function App() {
                 }}
                 onModalClose={() => {
                   // When modal is closed without selecting
-                  if (subjectModalContext === 'chat' && currentSubject === 'general') {
+                    if (subjectModalContext === 'chat' && !currentSubject) {
                     toast.info('Please select a subject to start chatting');
                   }
                 }}
