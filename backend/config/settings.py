@@ -39,7 +39,15 @@ class Settings(BaseSettings):
     
     # AI Service
     groq_api_key: str = os.getenv("GROQ_API_KEY", "")
-    ai_model: str = os.getenv("AI_MODEL", "mixtral-8x7b-32768")
+    ai_model: str = os.getenv("AI_MODEL", "openai/gpt-oss-120b")
+    ai_fallback_models: list = [
+        model.strip()
+        for model in os.getenv(
+            "AI_FALLBACK_MODELS",
+            "llama-3.3-70b-versatile,llama-3.1-8b-instant",
+        ).split(",")
+        if model.strip()
+    ]
     
     # App
     app_name: str = "Code Mentor AI"
@@ -114,6 +122,10 @@ class Settings(BaseSettings):
     @property
     def GROK_MODEL(self) -> str:
         return self.ai_model
+
+    @property
+    def GROK_FALLBACK_MODELS(self) -> list:
+        return self.ai_fallback_models
 
     @property
     def REDIS_URL(self) -> str:

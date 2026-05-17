@@ -27,6 +27,7 @@ class GrokService:
             api_key=settings.GROQ_API_KEY,
             base_url=settings.GROQ_BASE_URL
         )
+        self.models = self._build_model_priority()
 
         self.safety_prompts = ["kill", "bomb", "hate", "illegal", "hack", "drug"]
         self.datasets = self.load_datasets()
@@ -36,6 +37,47 @@ class GrokService:
 
         if SKLEARN_AVAILABLE:
             self.initialize_rag()
+
+    def _build_model_priority(self) -> List[str]:
+        models: List[str] = [settings.GROK_MODEL, *settings.GROK_FALLBACK_MODELS]
+        deduped: List[str] = []
+        for model in models:
+            if model and model not in deduped:
+                deduped.append(model)
+        return deduped
+
+    def _is_model_decommissioned_error(self, error: Exception) -> bool:
+        message = str(error).lower()
+        return (
+            "model_decommissioned" in message
+            or "decommissioned" in message
+            or "no longer supported" in message
+        )
+
+    def _create_completion(self, messages, temperature=0.7, max_tokens=1500):
+        last_error = None
+
+        for index, model in enumerate(self.models):
+            try:
+                response = self.client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                )
+                if index > 0:
+                    logger.warning("Primary model unavailable; fallback model used: %s", model)
+                return response
+            except Exception as error:
+                last_error = error
+                if self._is_model_decommissioned_error(error):
+                    logger.warning("Model '%s' is unavailable, trying next fallback", model)
+                    continue
+                raise
+
+        if last_error:
+            raise last_error
+        raise RuntimeError("No AI model configured for completion")
 
     # ---------------- DATA ---------------- #
     def load_datasets(self) -> Dict[str, List[Dict]]:
@@ -100,8 +142,7 @@ Explain clearly with steps and examples.
 """
 
         try:
-            response = self.client.chat.completions.create(
-                model=settings.GROK_MODEL,
+            response = self._create_completion(
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt}
@@ -113,7 +154,8 @@ Explain clearly with steps and examples.
             return response.choices[0].message.content
 
         except Exception as e:
-            return f"Error: {str(e)}"
+            logger.exception("AI response generation failed")
+            return "Error: AI service is temporarily unavailable. Please try again in a moment."
 
     # ---------------- CODE ANALYSIS ---------------- #
     def analyze_code(self, code: str):
@@ -126,8 +168,7 @@ Analyze this code and fix errors:
 """
 
         try:
-            response = self.client.chat.completions.create(
-                model=settings.GROK_MODEL,
+            response = self._create_completion(
                 messages=[
                     {"role": "system", "content": "You are an expert Python tutor and debugger."},
                     {"role": "user", "content": prompt}
@@ -139,4 +180,5 @@ Analyze this code and fix errors:
             return response.choices[0].message.content
 
         except Exception as e:
-            return f"Error: {str(e)}"
+            logger.exception("Code analysis failed")
+            return "Error: AI service is temporarily unavailable. Please try again in a moment."
